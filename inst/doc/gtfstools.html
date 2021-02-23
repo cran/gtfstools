@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>Introduction to gtfstools</title>
+
+<script src="data:application/javascript;base64,Ly8gUGFuZG9jIDIuOSBhZGRzIGF0dHJpYnV0ZXMgb24gYm90aCBoZWFkZXIgYW5kIGRpdi4gV2UgcmVtb3ZlIHRoZSBmb3JtZXIgKHRvCi8vIGJlIGNvbXBhdGlibGUgd2l0aCB0aGUgYmVoYXZpb3Igb2YgUGFuZG9jIDwgMi44KS4KZG9jdW1lbnQuYWRkRXZlbnRMaXN0ZW5lcignRE9NQ29udGVudExvYWRlZCcsIGZ1bmN0aW9uKGUpIHsKICB2YXIgaHMgPSBkb2N1bWVudC5xdWVyeVNlbGVjdG9yQWxsKCJkaXYuc2VjdGlvbltjbGFzcyo9J2xldmVsJ10gPiA6Zmlyc3QtY2hpbGQiKTsKICB2YXIgaSwgaCwgYTsKICBmb3IgKGkgPSAwOyBpIDwgaHMubGVuZ3RoOyBpKyspIHsKICAgIGggPSBoc1tpXTsKICAgIGlmICghL15oWzEtNl0kL2kudGVzdChoLnRhZ05hbWUpKSBjb250aW51ZTsgIC8vIGl0IHNob3VsZCBiZSBhIGhlYWRlciBoMS1oNgogICAgYSA9IGguYXR0cmlidXRlczsKICAgIHdoaWxlIChhLmxlbmd0aCA+IDApIGgucmVtb3ZlQXR0cmlidXRlKGFbMF0ubmFtZSk7CiAgfQp9KTsK"></script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<link rel="stylesheet" href="data:text/css,body%20%7B%0Abackground%2Dcolor%3A%20%23fff%3B%0Amargin%3A%201em%20auto%3B%0Amax%2Dwidth%3A%20700px%3B%0Aoverflow%3A%20visible%3B%0Apadding%2Dleft%3A%202em%3B%0Apadding%2Dright%3A%202em%3B%0Afont%2Dfamily%3A%20%22Open%20Sans%22%2C%20%22Helvetica%20Neue%22%2C%20Helvetica%2C%20Arial%2C%20sans%2Dserif%3B%0Afont%2Dsize%3A%2014px%3B%0Aline%2Dheight%3A%201%2E35%3B%0A%7D%0A%23TOC%20%7B%0Aclear%3A%20both%3B%0Amargin%3A%200%200%2010px%2010px%3B%0Apadding%3A%204px%3B%0Awidth%3A%20400px%3B%0Aborder%3A%201px%20solid%20%23CCCCCC%3B%0Aborder%2Dradius%3A%205px%3B%0Abackground%2Dcolor%3A%20%23f6f6f6%3B%0Afont%2Dsize%3A%2013px%3B%0Aline%2Dheight%3A%201%2E3%3B%0A%7D%0A%23TOC%20%2Etoctitle%20%7B%0Afont%2Dweight%3A%20bold%3B%0Afont%2Dsize%3A%2015px%3B%0Amargin%2Dleft%3A%205px%3B%0A%7D%0A%23TOC%20ul%20%7B%0Apadding%2Dleft%3A%2040px%3B%0Amargin%2Dleft%3A%20%2D1%2E5em%3B%0Amargin%2Dtop%3A%205px%3B%0Amargin%2Dbottom%3A%205px%3B%0A%7D%0A%23TOC%20ul%20ul%20%7B%0Amargin%2Dleft%3A%20%2D2em%3B%0A%7D%0A%23TOC%20li%20%7B%0Aline%2Dheight%3A%2016px%3B%0A%7D%0Atable%20%7B%0Amargin%3A%201em%20auto%3B%0Aborder%2Dwidth%3A%201px%3B%0Aborder%2Dcolor%3A%20%23DDDDDD%3B%0Aborder%2Dstyle%3A%20outset%3B%0Aborder%2Dcollapse%3A%20collapse%3B%0A%7D%0Atable%20th%20%7B%0Aborder%2Dwidth%3A%202px%3B%0Apadding%3A%205px%3B%0Aborder%2Dstyle%3A%20inset%3B%0A%7D%0Atable%20td%20%7B%0Aborder%2Dwidth%3A%201px%3B%0Aborder%2Dstyle%3A%20inset%3B%0Aline%2Dheight%3A%2018px%3B%0Apadding%3A%205px%205px%3B%0A%7D%0Atable%2C%20table%20th%2C%20table%20td%20%7B%0Aborder%2Dleft%2Dstyle%3A%20none%3B%0Aborder%2Dright%2Dstyle%3A%20none%3B%0A%7D%0Atable%20thead%2C%20table%20tr%2Eeven%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0A%7D%0Ap%20%7B%0Amargin%3A%200%2E5em%200%3B%0A%7D%0Ablockquote%20%7B%0Abackground%2Dcolor%3A%20%23f6f6f6%3B%0Apadding%3A%200%2E25em%200%2E75em%3B%0A%7D%0Ahr%20%7B%0Aborder%2Dstyle%3A%20solid%3B%0Aborder%3A%20none%3B%0Aborder%2Dtop%3A%201px%20solid%20%23777%3B%0Amargin%3A%2028px%200%3B%0A%7D%0Adl%20%7B%0Amargin%2Dleft%3A%200%3B%0A%7D%0Adl%20dd%20%7B%0Amargin%2Dbottom%3A%2013px%3B%0Amargin%2Dleft%3A%2013px%3B%0A%7D%0Adl%20dt%20%7B%0Afont%2Dweight%3A%20bold%3B%0A%7D%0Aul%20%7B%0Amargin%2Dtop%3A%200%3B%0A%7D%0Aul%20li%20%7B%0Alist%2Dstyle%3A%20circle%20outside%3B%0A%7D%0Aul%20ul%20%7B%0Amargin%2Dbottom%3A%200%3B%0A%7D%0Apre%2C%20code%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0Aborder%2Dradius%3A%203px%3B%0Acolor%3A%20%23333%3B%0Awhite%2Dspace%3A%20pre%2Dwrap%3B%20%0A%7D%0Apre%20%7B%0Aborder%2Dradius%3A%203px%3B%0Amargin%3A%205px%200px%2010px%200px%3B%0Apadding%3A%2010px%3B%0A%7D%0Apre%3Anot%28%5Bclass%5D%29%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0A%7D%0Acode%20%7B%0Afont%2Dfamily%3A%20Consolas%2C%20Monaco%2C%20%27Courier%20New%27%2C%20monospace%3B%0Afont%2Dsize%3A%2085%25%3B%0A%7D%0Ap%20%3E%20code%2C%20li%20%3E%20code%20%7B%0Apadding%3A%202px%200px%3B%0A%7D%0Adiv%2Efigure%20%7B%0Atext%2Dalign%3A%20center%3B%0A%7D%0Aimg%20%7B%0Abackground%2Dcolor%3A%20%23FFFFFF%3B%0Apadding%3A%202px%3B%0Aborder%3A%201px%20solid%20%23DDDDDD%3B%0Aborder%2Dradius%3A%203px%3B%0Aborder%3A%201px%20solid%20%23CCCCCC%3B%0Amargin%3A%200%205px%3B%0A%7D%0Ah1%20%7B%0Amargin%2Dtop%3A%200%3B%0Afont%2Dsize%3A%2035px%3B%0Aline%2Dheight%3A%2040px%3B%0A%7D%0Ah2%20%7B%0Aborder%2Dbottom%3A%204px%20solid%20%23f7f7f7%3B%0Apadding%2Dtop%3A%2010px%3B%0Apadding%2Dbottom%3A%202px%3B%0Afont%2Dsize%3A%20145%25%3B%0A%7D%0Ah3%20%7B%0Aborder%2Dbottom%3A%202px%20solid%20%23f7f7f7%3B%0Apadding%2Dtop%3A%2010px%3B%0Afont%2Dsize%3A%20120%25%3B%0A%7D%0Ah4%20%7B%0Aborder%2Dbottom%3A%201px%20solid%20%23f7f7f7%3B%0Amargin%2Dleft%3A%208px%3B%0Afont%2Dsize%3A%20105%25%3B%0A%7D%0Ah5%2C%20h6%20%7B%0Aborder%2Dbottom%3A%201px%20solid%20%23ccc%3B%0Afont%2Dsize%3A%20105%25%3B%0A%7D%0Aa%20%7B%0Acolor%3A%20%230033dd%3B%0Atext%2Ddecoration%3A%20none%3B%0A%7D%0Aa%3Ahover%20%7B%0Acolor%3A%20%236666ff%3B%20%7D%0Aa%3Avisited%20%7B%0Acolor%3A%20%23800080%3B%20%7D%0Aa%3Avisited%3Ahover%20%7B%0Acolor%3A%20%23BB00BB%3B%20%7D%0Aa%5Bhref%5E%3D%22http%3A%22%5D%20%7B%0Atext%2Ddecoration%3A%20underline%3B%20%7D%0Aa%5Bhref%5E%3D%22https%3A%22%5D%20%7B%0Atext%2Ddecoration%3A%20underline%3B%20%7D%0A%0Acode%20%3E%20span%2Ekw%20%7B%20color%3A%20%23555%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Edt%20%7B%20color%3A%20%23902000%3B%20%7D%20%0Acode%20%3E%20span%2Edv%20%7B%20color%3A%20%2340a070%3B%20%7D%20%0Acode%20%3E%20span%2Ebn%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Efl%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Ech%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Est%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Eco%20%7B%20color%3A%20%23888888%3B%20font%2Dstyle%3A%20italic%3B%20%7D%20%0Acode%20%3E%20span%2Eot%20%7B%20color%3A%20%23007020%3B%20%7D%20%0Acode%20%3E%20span%2Eal%20%7B%20color%3A%20%23ff0000%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Efu%20%7B%20color%3A%20%23900%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Eer%20%7B%20color%3A%20%23a61717%3B%20background%2Dcolor%3A%20%23e3d2d2%3B%20%7D%20%0A" type="text/css" />
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Introduction to gtfstools</h1>
+
+
+
+<p>The General Transit Feed Specification (GTFS) data format defines a common scheme for describing transit systems, and is widely used by transit agencies around the world and consumed by many software applications. The <strong>gtfstools</strong> package makes handling GTFS data in <strong>R</strong> very easy and fast, offering many utility functions to read, manipulate, analyse and write transit feeds in such format.</p>
+<div id="gtfs-feeds" class="section level1">
+<h1>GTFS feeds</h1>
+<p>GTFS feeds exist in two main different forms: the GTFS <em>static</em> and the GTFS <em>realtime</em>. This package allows you to manipulate GTFS <em>static</em> feeds, the most common variation. These feeds are the collection of many <code>csv</code>-like files (with a <code>.txt</code> extension) contained in a single <code>.zip</code> file. A GTFS <code>.zip</code> file is composed by at least five required files, but may also contain a few other conditionally required and optional files:</p>
+<ul>
+<li>Required: <code>agency.txt</code>, <code>stops.txt</code>, <code>routes.txt</code>, <code>trips.txt</code>, <code>stop_times.txt</code></li>
+<li>Conditionally required: <code>calendar.txt</code>, <code>calendar_dates.txt</code>, <code>feed_info.txt</code></li>
+<li>Optional: <code>fare_attributes.txt</code>, <code>fare_rules.txt</code>, <code>shapes.txt</code>, <code>frequencies.txt</code>, <code>transfers.txt</code>, <code>pathways.txt</code>, <code>levels.txt</code>, <code>translations.txt</code>, <code>attributions.txt</code></li>
+</ul>
+<p>Please check the official <a href="https://developers.google.com/transit/gtfs/reference">GTFS reference</a> for more details on the specification.</p>
+</div>
+<div id="basic-usage" class="section level1">
+<h1>Basic usage</h1>
+<p>Before using <strong>gtfstools</strong> please make sure that you have it installed in your computer. You can download either the most stable version from CRAN or the development version from GitHub:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># stable version - not yet available</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># install.packages(&quot;gtfstools&quot;)</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># development version</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_github</span>(<span class="st">&quot;ipeaGIT/gtfstools&quot;</span>)</span></code></pre></div>
+<p>Then attach it to the current R session:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gtfstools)</span></code></pre></div>
+<p>Throughout this demonstration we will be using a few sample files included in the package:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>data_path <span class="ot">&lt;-</span> <span class="fu">system.file</span>(<span class="st">&quot;extdata&quot;</span>, <span class="at">package =</span> <span class="st">&quot;gtfstools&quot;</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">list.files</span>(data_path)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] &quot;ggl_gtfs.zip&quot; &quot;spo_gtfs.zip&quot;</span></span></code></pre></div>
+<ul>
+<li><code>ggl_gtfs.zip</code> has been manually built from the <a href="https://developers.google.com/transit/gtfs/examples/gtfs-feed">example GTFS feed</a> provided by Google. The files samples are licensed under <a href="https://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 License</a>.</li>
+<li><code>spo_gtfs.zip</code> is a subset of the São Paulo’s Mobility and Transport Municipal Secretary official feed, available <a href="https://www.sptrans.com.br/desenvolvedores/">here</a>.</li>
+</ul>
+<div id="read-feeds" class="section level2">
+<h2>Read feeds</h2>
+<p><strong>gtfstools</strong> reads feeds as a <code>list</code> of <code>data.table</code>s, a high-performance version of base <strong>R</strong>’s <code>data.frame</code>s. Thus reading, writing and manipulating GTFS objects created by <strong>gtfstools</strong> is very easy and fast even if some of your tables contain a few million rows.</p>
+<p>To read a feed use the <code>read_gtfs()</code> function. By default the function reads all <code>.txt</code> files contained in the main <code>.zip</code> file. It may be useful, however, to read only a couple of specific files, specially if you’re dealing with some big data sets. To do so, specify which file you want to read in the <code>files</code> argument (<em>without</em> the <code>.txt</code> extension):</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>spo_path <span class="ot">&lt;-</span> <span class="fu">file.path</span>(data_path, <span class="st">&quot;spo_gtfs.zip&quot;</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="co"># default behaviour</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>spo_gtfs <span class="ot">&lt;-</span> <span class="fu">read_gtfs</span>(spo_path)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(spo_gtfs)</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] &quot;agency&quot;      &quot;calendar&quot;    &quot;frequencies&quot; &quot;routes&quot;      &quot;shapes&quot;     </span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [6] &quot;stop_times&quot;  &quot;stops&quot;       &quot;trips&quot;</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="co"># only reads the &#39;shapes.txt&#39; file</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>spo_shapes <span class="ot">&lt;-</span> <span class="fu">read_gtfs</span>(spo_path, <span class="at">files =</span> <span class="st">&quot;shapes&quot;</span>)</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(spo_shapes)</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] &quot;shapes&quot;</span></span></code></pre></div>
+<p>Please note that date fields are read as columns of class <code>Date</code>, instead of being kept as integers (as specified in the <a href="https://developers.google.com/transit/gtfs/reference">official reference</a>), allowing for easier data manipulation. These columns are converted back to integers when <a href="#write-feeds">writing the GTFS objects</a> to a <code>.zip</code> file, so GTFS files generated by the package always conform to the specification.</p>
+</div>
+<div id="validate-feeds" class="section level2">
+<h2>Validate feeds</h2>
+<p>Every feed read with <code>read_gtfs()</code> is validated against the official GTFS specification. This validation performs a few basic checks, such as looking for missing required files, looking for missing required fields (i.e. columns) within each file and keeping track of extra files and fields (i.e. files and fields that aren’t listed in the official specification). The validation result is appended to each GTFS object as an attribute called <code>validation_result</code>.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(<span class="fu">attr</span>(spo_gtfs, <span class="st">&quot;validation_result&quot;</span>))</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;      file file_spec file_provided_status           field field_spec</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1: agency       req                 TRUE       agency_id        opt</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2: agency       req                 TRUE     agency_name        req</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 3: agency       req                 TRUE      agency_url        req</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 4: agency       req                 TRUE agency_timezone        req</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 5: agency       req                 TRUE     agency_lang        opt</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 6: agency       req                 TRUE    agency_phone        opt</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    field_provided_status validation_status validation_details</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1:                  TRUE                ok               &lt;NA&gt;</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2:                  TRUE                ok               &lt;NA&gt;</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 3:                  TRUE                ok               &lt;NA&gt;</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 4:                  TRUE                ok               &lt;NA&gt;</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 5:                  TRUE                ok               &lt;NA&gt;</span></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 6:                 FALSE              info  missing_opt_field</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a><span class="fu">attr</span>(spo_shapes, <span class="st">&quot;validation_result&quot;</span>)</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;      file file_spec file_provided_status               field field_spec</span></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1: shapes       opt                 TRUE            shape_id        req</span></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2: shapes       opt                 TRUE        shape_pt_lat        req</span></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 3: shapes       opt                 TRUE        shape_pt_lon        req</span></span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 4: shapes       opt                 TRUE   shape_pt_sequence        req</span></span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 5: shapes       opt                 TRUE shape_dist_traveled        opt</span></span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    field_provided_status validation_status validation_details</span></span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1:                  TRUE                ok               &lt;NA&gt;</span></span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2:                  TRUE                ok               &lt;NA&gt;</span></span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 3:                  TRUE                ok               &lt;NA&gt;</span></span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 4:                  TRUE                ok               &lt;NA&gt;</span></span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 5:                  TRUE                ok               &lt;NA&gt;</span></span></code></pre></div>
+<p>You may have noticed that <code>spo_gtfs</code>’ <code>validation_result</code> is larger than <code>spo_shapes</code>’. Since we haven’t specified which files we wanted to import when reading the former, the resulting feed is validated against every possible file in the specification. The latter, however, is only validated against the files that were specified in the <code>files</code> argument (in this case, <code>shapes</code>).</p>
+<p>To revalidate an existing GTFS object you can use the <code>validate_gtfs()</code> function, which returns the same GTFS object with an updated <code>validation_result</code> attribute. The function also takes a <code>files</code> argument, much like <code>read_gtfs()</code>, to specify which files you want to validate your GTFS against. Validating <code>spo_shapes</code> against all possible files (the default) generates a much larger <code>validation_result</code> object (and a warning, because the object is missing all required files):</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>new_spo_shapes <span class="ot">&lt;-</span> <span class="fu">validate_gtfs</span>(spo_shapes)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Warning in validate_gtfs(spo_shapes): Invalid feed. Missing required file(s):</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; &#39;agency&#39;, &#39;stops&#39;, &#39;routes&#39;, &#39;trips&#39;, &#39;stop_times&#39;, &#39;calendar_dates&#39;</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="fu">nrow</span>(<span class="fu">attr</span>(new_spo_shapes, <span class="st">&quot;validation_result&quot;</span>))</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] 136</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="fu">nrow</span>(<span class="fu">attr</span>(spo_shapes, <span class="st">&quot;validation_result&quot;</span>))</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] 5</span></span></code></pre></div>
+</div>
+<div id="analyse-feeds" class="section level2">
+<h2>Analyse feeds</h2>
+<p><strong>gtfstools</strong> also includes a few functions to prevent you from getting stuck with repetitive tasks:</p>
+<p><code>get_trip_geometry()</code> returns the geometry of each trip in a GTFS object as an <code>sf</code> object (please check <a href="https://r-spatial.github.io/sf/"><code>{sf}</code> webpage</a> for more details). GTFS data allows you to generate geometries using two different methods: either converting the shapes described in the <code>shapes.txt</code> file to an <code>sf</code>, or linking the subsequent stops of each trip as described in the <code>stop_times.txt</code> along a straight line. While the former tends to yield more reliable and higher resolution geometries, it may be useful to compare the results of both methods to check if the trips described in <code>stop_times</code> actually resemble their actual shape:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>trip_geom <span class="ot">&lt;-</span> <span class="fu">get_trip_geometry</span>(spo_gtfs, <span class="at">file =</span> <span class="st">&quot;shapes&quot;</span>)</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(trip_geom<span class="sc">$</span>geometry)</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>single_trip <span class="ot">&lt;-</span> spo_gtfs<span class="sc">$</span>trips<span class="sc">$</span>trip_id[<span class="dv">1</span>]</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>single_trip</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] &quot;CPTM L07-0&quot;</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="co"># &#39;file&#39; argument defaults to c(&quot;shapes&quot;, &quot;stop_times&quot;)</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>both_geom <span class="ot">&lt;-</span> <span class="fu">get_trip_geometry</span>(spo_gtfs, <span class="at">trip_id =</span> single_trip)</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(both_geom[<span class="st">&quot;origin_file&quot;</span>])</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p><code>get_trip_duration()</code> returns the duration of each trip in a GTFS object, as specified in the <code>stop_times</code> file, in the temporal unit of your desire (either seconds, minutes, hours or days):</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>trip_durtn <span class="ot">&lt;-</span> <span class="fu">get_trip_duration</span>(spo_gtfs, <span class="at">unit =</span> <span class="st">&quot;s&quot;</span>)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(trip_durtn)</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;      trip_id duration</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1: 2002-10-0     2880</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2: 2105-10-0     6480</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 3: 2105-10-1     6660</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 4: 2161-10-0     5640</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 5: 2161-10-1     5580</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 6: 4491-10-0     4140</span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a><span class="co"># &#39;unit&#39; argument defaults to &quot;min&quot;</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>single_durtn <span class="ot">&lt;-</span> <span class="fu">get_trip_duration</span>(spo_gtfs, <span class="at">trip_id =</span> single_trip)</span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>single_durtn</span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;       trip_id duration</span></span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1: CPTM L07-0      136</span></span></code></pre></div>
+<p><code>get_trip_segment_duration()</code> is a similar function, that even takes the same arguments, but returns the duration of each trip <em>segment</em> (i.e. the time interval between two consecutive stops).</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>trip_seg_durtn <span class="ot">&lt;-</span> <span class="fu">get_trip_segment_duration</span>(spo_gtfs, <span class="at">unit =</span> <span class="st">&quot;s&quot;</span>)</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(trip_seg_durtn)</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;      trip_id segment duration</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1: 2002-10-0       1      130</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2: 2002-10-0       2      130</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 3: 2002-10-0       3      130</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 4: 2002-10-0       4      130</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 5: 2002-10-0       5      130</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 6: 2002-10-0       6      130</span></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>single_seg_durtn <span class="ot">&lt;-</span> <span class="fu">get_trip_segment_duration</span>(spo_gtfs, <span class="at">trip_id =</span> single_trip)</span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(single_seg_durtn)</span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;       trip_id segment duration</span></span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1: CPTM L07-0       1        8</span></span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2: CPTM L07-0       2        8</span></span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 3: CPTM L07-0       3        8</span></span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 4: CPTM L07-0       4        8</span></span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 5: CPTM L07-0       5        8</span></span>
+<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 6: CPTM L07-0       6        8</span></span></code></pre></div>
+<p>The quick example above shows how this function may help you diagnosing some problems in your GTFS data: apparently every single trip in <code>spo_gtfs</code> is composed by several equally long segments, which looks unreasonable.</p>
+<p>Finally, <code>get_trip_speed()</code> is a helper around <code>get_trip_geometry()</code> and <code>get_trip_duration()</code> that returns the average speed of each trip in a GTFS object.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>trip_speed <span class="ot">&lt;-</span> <span class="fu">get_trip_speed</span>(spo_gtfs, <span class="at">unit =</span> <span class="st">&quot;m/s&quot;</span>)</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Linking to GEOS 3.9.0, GDAL 3.2.1, PROJ 7.2.1</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(trip_speed)</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;       trip_id origin_file    speed</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1: CPTM L07-0      shapes  7.42919</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2: CPTM L07-1      shapes  7.42919</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 3: CPTM L08-0      shapes  4.73951</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 4: CPTM L08-1      shapes  4.73951</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 5: CPTM L09-0      shapes 10.40194</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 6: CPTM L09-1      shapes 10.40194</span></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a><span class="co"># &#39;unit&#39; argument defaults to &quot;km/h&quot;</span></span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>single_trip_speed <span class="ot">&lt;-</span> <span class="fu">get_trip_speed</span>(spo_gtfs, <span class="at">trip_id =</span> single_trip)</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>single_trip_speed</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;       trip_id origin_file    speed</span></span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1: CPTM L07-0      shapes 26.74508</span></span></code></pre></div>
+</div>
+<div id="manipulate-feeds" class="section level2">
+<h2>Manipulate feeds</h2>
+<p>Each table inside a GTFS object can be easily manipulated using the usual <code>data.table</code> syntax. <code>{data.table}</code> provides many useful features, such as updating columns by reference, fast binary search, efficient data aggregation, and many others, that allows you to deal with large data sets very efficiently. Please check its <a href="https://rdatatable.gitlab.io/data.table/index.html">official website</a> for more details on syntax and usage.</p>
+<p>Just remember that, since every GTFS object is a <em><code>list</code></em> of <code>data.table</code>s, you must refer to each table using the <code>$</code> operator. For example, this is how you’d remove the <code>headway_secs</code> column from the <code>frequencies</code> file and add it again afterwards:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>old_headway_secs <span class="ot">&lt;-</span> spo_gtfs<span class="sc">$</span>frequencies<span class="sc">$</span>headway_secs</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>spo_gtfs<span class="sc">$</span>frequencies[, headway_secs <span class="sc">:</span><span class="er">=</span> <span class="cn">NULL</span>]</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(spo_gtfs<span class="sc">$</span>frequencies)</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;       trip_id start_time end_time</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1: CPTM L07-0   04:00:00 04:59:00</span></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2: CPTM L07-0   05:00:00 05:59:00</span></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 3: CPTM L07-0   06:00:00 06:59:00</span></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 4: CPTM L07-0   07:00:00 07:59:00</span></span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 5: CPTM L07-0   08:00:00 08:59:00</span></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 6: CPTM L07-0   09:00:00 09:59:00</span></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>spo_gtfs<span class="sc">$</span>frequencies[, headway_secs <span class="sc">:</span><span class="er">=</span> old_headway_secs]</span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(spo_gtfs<span class="sc">$</span>frequencies)</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;       trip_id start_time end_time headway_secs</span></span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1: CPTM L07-0   04:00:00 04:59:00          720</span></span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2: CPTM L07-0   05:00:00 05:59:00          360</span></span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 3: CPTM L07-0   06:00:00 06:59:00          360</span></span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 4: CPTM L07-0   07:00:00 07:59:00          360</span></span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 5: CPTM L07-0   08:00:00 08:59:00          360</span></span>
+<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 6: CPTM L07-0   09:00:00 09:59:00          480</span></span></code></pre></div>
+<p><strong>gtfstools</strong> also provides some functions that help you getting over some common tasks. <code>merge_gtfs()</code> takes many GTFS objects and combines them row-wise. By default the function binds every table inside the objects, but you can specify which tables you want to merge with the <code>files</code> argument:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>ggl_path <span class="ot">&lt;-</span> <span class="fu">file.path</span>(data_path, <span class="st">&quot;ggl_gtfs.zip&quot;</span>)</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>ggl_gtfs <span class="ot">&lt;-</span> <span class="fu">read_gtfs</span>(ggl_path)</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(spo_gtfs)</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] &quot;agency&quot;      &quot;calendar&quot;    &quot;frequencies&quot; &quot;routes&quot;      &quot;shapes&quot;     </span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [6] &quot;stop_times&quot;  &quot;stops&quot;       &quot;trips&quot;</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(ggl_gtfs)</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  [1] &quot;calendar_dates&quot;  &quot;fare_attributes&quot; &quot;fare_rules&quot;      &quot;feed_info&quot;      </span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  [5] &quot;frequencies&quot;     &quot;levels&quot;          &quot;pathways&quot;        &quot;routes&quot;         </span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  [9] &quot;shapes&quot;          &quot;stop_times&quot;      &quot;stops&quot;           &quot;transfers&quot;      </span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [13] &quot;translations&quot;    &quot;trips&quot;           &quot;agency&quot;          &quot;attributions&quot;   </span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [17] &quot;calendar&quot;</span></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>merged_gtfs <span class="ot">&lt;-</span> <span class="fu">merge_gtfs</span>(spo_gtfs, ggl_gtfs)</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(merged_gtfs)</span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  [1] &quot;agency&quot;          &quot;calendar&quot;        &quot;frequencies&quot;     &quot;routes&quot;         </span></span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  [5] &quot;shapes&quot;          &quot;stop_times&quot;      &quot;stops&quot;           &quot;trips&quot;          </span></span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  [9] &quot;calendar_dates&quot;  &quot;fare_attributes&quot; &quot;fare_rules&quot;      &quot;feed_info&quot;      </span></span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [13] &quot;levels&quot;          &quot;pathways&quot;        &quot;transfers&quot;       &quot;translations&quot;   </span></span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [17] &quot;attributions&quot;</span></span>
+<span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-22"><a href="#cb13-22" aria-hidden="true" tabindex="-1"></a><span class="co"># only merges the &#39;shapes&#39; and &#39;trips&#39; tables</span></span>
+<span id="cb13-23"><a href="#cb13-23" aria-hidden="true" tabindex="-1"></a>merged_files <span class="ot">&lt;-</span> <span class="fu">merge_gtfs</span>(spo_gtfs, ggl_gtfs, <span class="at">files =</span> <span class="fu">c</span>(<span class="st">&quot;shapes&quot;</span>, <span class="st">&quot;trips&quot;</span>))</span>
+<span id="cb13-24"><a href="#cb13-24" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(merged_files)</span>
+<span id="cb13-25"><a href="#cb13-25" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] &quot;shapes&quot; &quot;trips&quot;</span></span></code></pre></div>
+<p><code>set_trip_speed()</code> sets the average speed of specified trips by adjusting the <code>arrival_time</code> and <code>departure_time</code> columns in the <code>stop_times</code> table. Average speed is calculated as the difference between the arrival time at the last stop minus the departure time at the first top, divided by the trip’s length. Please note that arrival and departure times at intermediate stops are set as <code>&quot;&quot;</code>. Some transport routing software, such as <a href="https://www.opentripplanner.org/">OpenTripPlanner</a>, support specifying stop times like so, in which case they interpolate arrival/departure times at intermediate stops based on the trip’s average speed.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>selected_trips <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;CPTM L07-0&quot;</span>, <span class="st">&quot;2002-10-0&quot;</span>)</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="fu">get_trip_speed</span>(spo_gtfs, selected_trips)</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;       trip_id origin_file     speed</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1: CPTM L07-0      shapes 26.745082</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2:  2002-10-0      shapes  8.940513</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a><span class="co"># &#39;speed&#39; is recycled to all trips if only a single value is given</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>new_speed_gtfs <span class="ot">&lt;-</span> <span class="fu">set_trip_speed</span>(spo_gtfs, selected_trips, <span class="dv">50</span>)</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a><span class="fu">get_trip_speed</span>(new_speed_gtfs, selected_trips)</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;       trip_id origin_file    speed</span></span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1: CPTM L07-0      shapes 50.00914</span></span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2:  2002-10-0      shapes 50.09470</span></span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a><span class="co"># but you can also specify different speeds for each trip</span></span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a>new_speed_gtfs <span class="ot">&lt;-</span> <span class="fu">set_trip_speed</span>(spo_gtfs, selected_trips, <span class="fu">c</span>(<span class="dv">30</span>, <span class="dv">40</span>))</span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a><span class="fu">get_trip_speed</span>(new_speed_gtfs, selected_trips)</span>
+<span id="cb14-18"><a href="#cb14-18" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;       trip_id origin_file    speed</span></span>
+<span id="cb14-19"><a href="#cb14-19" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1: CPTM L07-0      shapes 30.00273</span></span>
+<span id="cb14-20"><a href="#cb14-20" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2:  2002-10-0      shapes 40.04460</span></span></code></pre></div>
+</div>
+<div id="write-feeds" class="section level2">
+<h2><a name="write-feeds"></a> Write feeds</h2>
+<p>Finally, <code>write_gtfs()</code> allows you to save your GTFS objects to disk. It defaults to writing every single table inside the object as a <code>.txt</code> file, but you can conditionally exclude optional or extra files if you so wish:</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>temp_dir <span class="ot">&lt;-</span> <span class="fu">file.path</span>(<span class="fu">tempdir</span>(), <span class="st">&quot;gttools_vig&quot;</span>)</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="fu">dir.create</span>(temp_dir)</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="fu">list.files</span>(temp_dir)</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; character(0)</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>filename <span class="ot">&lt;-</span> <span class="fu">file.path</span>(temp_dir, <span class="st">&quot;spo_gtfs.zip&quot;</span>)</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a><span class="fu">write_gtfs</span>(spo_gtfs, filename)</span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a><span class="fu">list.files</span>(temp_dir)</span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] &quot;spo_gtfs.zip&quot;</span></span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a>zip<span class="sc">::</span><span class="fu">zip_list</span>(filename)<span class="sc">$</span>filename</span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] &quot;agency.txt&quot;      &quot;calendar.txt&quot;    &quot;frequencies.txt&quot; &quot;routes.txt&quot;     </span></span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [5] &quot;shapes.txt&quot;      &quot;stop_times.txt&quot;  &quot;stops.txt&quot;       &quot;trips.txt&quot;</span></span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a><span class="fu">write_gtfs</span>(spo_gtfs, filename, <span class="at">optional =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a>zip<span class="sc">::</span><span class="fu">zip_list</span>(filename)<span class="sc">$</span>filename</span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] &quot;agency.txt&quot;     &quot;calendar.txt&quot;   &quot;routes.txt&quot;     &quot;stop_times.txt&quot;</span></span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [5] &quot;stops.txt&quot;      &quot;trips.txt&quot;</span></span></code></pre></div>
+<p><code>write_gtfs()</code> also converts <code>Date</code> columns back to integer, producing GTFS files that conform to the official specification.</p>
+</div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
