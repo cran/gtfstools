@@ -42,55 +42,42 @@ test_that("raises errors/warnings due to unavailable files passed to 'files'", {
   # should throw an error when none of the specified files exist
   expect_error(merge_gtfs(spo_gtfs, ggl_gtfs, files = c("ola", "oie")))
 
-})
-
-test_that("raises messages adequately", {
+  # should run silently otherwise
   expect_silent(merge_gtfs(spo_gtfs, ggl_gtfs))
-  expect_message(merge_gtfs(spo_gtfs, ggl_gtfs, quiet = FALSE))
+
 })
 
 test_that("results in a GTFS object", {
+  dt_gtfs_class <- c("dt_gtfs", "gtfs", "list")
 
   # should work when files = NULL
-  expect_s3_class(merge_gtfs(spo_gtfs, ggl_gtfs), "dt_gtfs")
-  expect_s3_class(merge_gtfs(list(spo_gtfs, ggl_gtfs)), "dt_gtfs")
+  expect_s3_class(merge_gtfs(spo_gtfs, ggl_gtfs), dt_gtfs_class, exact = TRUE)
+  expect_s3_class(
+    merge_gtfs(list(spo_gtfs, ggl_gtfs)),
+    dt_gtfs_class,
+    exact = TRUE
+  )
 
   # and should also work when files = something else
-  expect_s3_class(merge_gtfs(spo_gtfs, ggl_gtfs, files = "shapes"), "dt_gtfs")
+  expect_s3_class(
+    merge_gtfs(spo_gtfs, ggl_gtfs, files = "shapes"),
+    dt_gtfs_class,
+    exact = TRUE
+  )
   expect_s3_class(
     merge_gtfs(list(spo_gtfs, ggl_gtfs), files = "shapes"),
-    "dt_gtfs"
+    dt_gtfs_class,
+    exact = TRUE
   )
 
   # even if a non-existent file is passed to 'files' (but not all of them)
-  expect_warning(
-    merged <- merge_gtfs(spo_gtfs, ggl_gtfs, files = c("shapes", "ola", "oie"))
+  expect_s3_class(
+    expect_warning(
+      merge_gtfs(list(spo_gtfs, ggl_gtfs), files = c("shapes", "ola", "oie")),
+    ),
+    dt_gtfs_class,
+    exact = TRUE
   )
-  expect_s3_class(merged, "dt_gtfs")
-
-})
-
-test_that("results in a validated GTFS object", {
-
-  # all files are validated if files = NULL
-
-  all_possible_files <- gsub(".txt", "", names(gtfs_metadata))
-
-  merged_gtfs <- merge_gtfs(spo_gtfs, ggl_gtfs)
-  expect_true("validation_result" %in% names(attributes(merged_gtfs)))
-
-  validated_files <- unique(attr(merged_gtfs, "validation_result")$file)
-
-  expect_identical(all_possible_files, validated_files)
-
-  # only selected files are validated if files = something else
-
-  merged_gtfs_small <- merge_gtfs(spo_gtfs, ggl_gtfs, files = "shapes")
-
-  validated_files <- unique(attr(merged_gtfs_small, "validation_result")$file)
-
-  expect_identical(validated_files, "shapes")
-
 })
 
 test_that("merges the adequate 'files'", {

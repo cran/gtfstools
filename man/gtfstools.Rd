@@ -11,14 +11,14 @@ Tools}
 Utility functions to read, manipulate, analyse and write transit feeds in the
 General Transit Feed Specification (GTFS) data format.
 }
-\section{Basic usage}{
+\section{Usage}{
 
-Please check the introductory vignette for basic usage:
+Please check the vignettes for more on the package usage:
 \itemize{
-  \item{Run \code{vignette("gtfstools")};}
-  \item{Alternatively, check it on
-    \href{https://ipeagit.github.io/gtfstools/articles/gtfstools.html}{
-    \code{{gtfstools}} website}.}
+\item Basic usage: reading, analysing, manipulating and writing feeds. Run
+\code{vignette("gtfstools")} or check it on the \href{https://ipeagit.github.io/gtfstools/articles/gtfstools.html}{website}.
+\item Filtering GTFS feeds. Run \code{vignette("filtering", package = "gtfstools")} or
+check it on the \href{https://ipeagit.github.io/gtfstools/articles/filtering.html}{website}.
 }
 }
 
@@ -34,8 +34,16 @@ Useful links:
 \author{
 \strong{Maintainer}: Daniel Herszenhut \email{dhersz@gmail.com} (\href{https://orcid.org/0000-0001-8066-1105}{ORCID})
 
+Authors:
+\itemize{
+  \item Rafael H. M. Pereira \email{rafa.pereira.br@gmail.com} (\href{https://orcid.org/0000-0003-2125-7465}{ORCID})
+  \item Pedro R. Andrade \email{pedro.andrade@inpe.br} (\href{https://orcid.org/0000-0001-8675-4046}{ORCID})
+  \item Joao Bazzo (\href{https://orcid.org/0000-0003-4536-5006}{ORCID})
+}
+
 Other contributors:
 \itemize{
+  \item Mark Padgham \email{mark.padgham@email.com} [contributor]
   \item Ipea - Institute for Applied Economic Research [copyright holder, funder]
 }
 

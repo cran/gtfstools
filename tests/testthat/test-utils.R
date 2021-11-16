@@ -3,83 +3,7 @@
 
 data_path <- system.file("extdata/spo_gtfs.zip", package = "gtfstools")
 gtfs <- read_gtfs(data_path)
-
-no_class_gtfs <- gtfs
-attr(no_class_gtfs, "class") <- NULL
-
-
-# check_gtfs_file_exists --------------------------------------------------
-
-
-context("Check GTFS file exists")
-
-test_that("raises errors due to incorrect input types", {
-  expect_error(check_gtfs_file_exists(no_class_gtfs, "stop_times"))
-  expect_error(check_gtfs_file_exists(gtfs, factor("stop_times")))
-})
-
-test_that("outputs TRUE if files exist and an error message if not", {
-  expect_true(check_gtfs_file_exists(gtfs, "stop_times"))
-  expect_type(
-    check_gtfs_file_exists(gtfs, "non_existent file"), "character"
-  )
-  expect_type(
-    check_gtfs_file_exists(gtfs, c("non_existent file", "stop_times")),
-    "character"
-  )
-  expect_type(
-    check_gtfs_file_exists(gtfs, c("non_existent file", "hello_world")),
-    "character"
-  )
-})
-
-
-# check_gtfs_field_exists -------------------------------------------------
-
-
-context("Check GTFS field exists")
-
-test_that("raises errors due to incorrect input types", {
-  expect_error(
-    check_gtfs_field_exists(no_class_gtfs, "stop_times", "arrival_time")
-  )
-  expect_error(
-    check_gtfs_field_exists(gtfs, factor("stop_times"), "arrival_time")
-  )
-  expect_error(
-    check_gtfs_field_exists(gtfs, "stop_times", factor("arrival_time"))
-  )
-})
-
-test_that("outputs TRUE if file and fields exist and an error message if not", {
-  expect_true(check_gtfs_field_exists(gtfs, "stop_times", "arrival_time"))
-  expect_type(
-    check_gtfs_field_exists(gtfs, "stop_times", "non-existent field"),
-    "character"
-  )
-  expect_type(
-    check_gtfs_field_exists(
-      gtfs,
-      "stop_times",
-      c("arrival_time", "non-existent field")
-    ),
-    "character"
-  )
-  expect_type(
-    check_gtfs_field_exists(
-      gtfs,
-      "stop_times",
-      c("arrival_time", "non-existent field", "hello_world")
-    ),
-    "character"
-  )
-})
-
-test_that("raises an error if the file doesn't exist", {
-  expect_error(
-    check_gtfs_field_exists(gtfs, "non_existent file", "arrival_time")
-  )
-})
+no_class_gtfs <- unclass(gtfs)
 
 
 # string_to_seconds -------------------------------------------------------
@@ -92,7 +16,8 @@ test_that("raises errors due to incorrect input types", {
   expect_error(string_to_seconds(NULL))
 })
 
-test_that("outputs NA if NA is given", {
+test_that("outputs NA if empty string or NA is given", {
+  expect_identical(string_to_seconds(""), NA_integer_)
   expect_identical(string_to_seconds(NA_character_), NA_integer_)
 })
 
@@ -175,4 +100,64 @@ test_that("outputs doesn't change original file", {
   gtfs_copy <- copy_gtfs_without_field(gtfs, "shapes", "shape_id")
   shapes_after <- data.table::copy(gtfs$shapes)
   expect_identical(shapes_before, shapes_after)
+})
+
+
+# copy_gtfs_diff_field_class ----------------------------------------------
+
+
+context("Copy GTFS with a field of a different class")
+
+test_that("raises errors due to incorrect input types", {
+  expect_error(
+    copy_gtfs_diff_field_class(no_class_gtfs, "stops", "stop_id", "factor")
+  )
+  expect_error(
+    copy_gtfs_diff_field_class(gtfs, as.factor("stops"), "stop_id", "factor")
+  )
+  expect_error(
+    copy_gtfs_diff_field_class(gtfs, "stops", as.factor("stop_id"), "factor")
+  )
+  expect_error(
+    copy_gtfs_diff_field_class(gtfs, "stops", "stop_id", as.factor("factor"))
+  )
+})
+
+test_that("raises errors if non-existent file/field is given", {
+  expect_error(
+    copy_gtfs_diff_field_class(gtfs, "wrong_file", "stop_id", "factor")
+  )
+  expect_error(
+    copy_gtfs_diff_field_class(gtfs, "stops", "wrong_field", "factor")
+  )
+})
+
+test_that("outputs a gtfs with field of desired class", {
+
+  # converting to factor
+
+  gtfs_copy <- copy_gtfs_diff_field_class(gtfs, "stops", "stop_id", "factor")
+  expect_s3_class(gtfs_copy, "dt_gtfs")
+  expect_vector(gtfs$stops$stop_id, character(0))
+  expect_s3_class(gtfs_copy$stops$stop_id, "factor")
+
+  # and to character
+
+  gtfs_copy <- copy_gtfs_diff_field_class(
+    gtfs,
+    "stops",
+    "stop_lat",
+    "character"
+  )
+  expect_s3_class(gtfs_copy, "dt_gtfs")
+  expect_vector(gtfs$stops$stop_lat, numeric(0))
+  expect_vector(gtfs_copy$stops$stop_lat, character(0))
+
+})
+
+test_that("function call doesn't change original file", {
+  stops_before <- data.table::copy(gtfs$stops)
+  gtfs_copy <- copy_gtfs_diff_field_class(gtfs, "stops", "stop_id", "factor")
+  stops_after <- data.table::copy(gtfs$stops)
+  expect_identical(stops_before, stops_after)
 })

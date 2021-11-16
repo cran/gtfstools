@@ -5,10 +5,13 @@ knitr::opts_chunk$set(
 )
 
 ## ---- eval = FALSE------------------------------------------------------------
-#  # stable version - not yet available
-#  # install.packages("gtfstools")
+#  install.packages("gtfstools")
+
+## ---- eval = FALSE------------------------------------------------------------
+#  install.packages("gtfstools", repos = "https://dhersz.r-universe.dev")
 #  
-#  # development version
+#  # or
+#  # install.packages("remotes")
 #  remotes::install_github("ipeaGIT/gtfstools")
 
 ## ---- message = FALSE---------------------------------------------------------
@@ -28,18 +31,6 @@ names(spo_gtfs)
 # only reads the 'shapes.txt' file
 spo_shapes <- read_gtfs(spo_path, files = "shapes")
 names(spo_shapes)
-
-## -----------------------------------------------------------------------------
-head(attr(spo_gtfs, "validation_result"))
-
-attr(spo_shapes, "validation_result")
-
-## -----------------------------------------------------------------------------
-new_spo_shapes <- validate_gtfs(spo_shapes)
-
-nrow(attr(new_spo_shapes, "validation_result"))
-
-nrow(attr(spo_shapes, "validation_result"))
 
 ## -----------------------------------------------------------------------------
 trip_geom <- get_trip_geometry(spo_gtfs, file = "shapes")
@@ -121,6 +112,6 @@ write_gtfs(spo_gtfs, filename)
 list.files(temp_dir)
 zip::zip_list(filename)$filename
 
-write_gtfs(spo_gtfs, filename, optional = FALSE)
+write_gtfs(spo_gtfs, filename, files = c("stop_times", "trips", "calendar"))
 zip::zip_list(filename)$filename
 

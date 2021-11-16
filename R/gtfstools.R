@@ -4,20 +4,22 @@
 #' Utility functions to read, manipulate, analyse and write transit feeds in the
 #' General Transit Feed Specification (GTFS) data format.
 #'
-#' @section Basic usage:
-#' Please check the introductory vignette for basic usage:
-#' \itemize{
-#'   \item{Run \code{vignette("gtfstools")};}
-#'   \item{Alternatively, check it on
-#'     \href{https://ipeagit.github.io/gtfstools/articles/gtfstools.html}{
-#'     \code{{gtfstools}} website}.}
-#' }
+#' @section Usage:
+#' Please check the vignettes for more on the package usage:
+#' - Basic usage: reading, analysing, manipulating and writing feeds. Run
+#' `vignette("gtfstools")` or check it on the [website](
+#' https://ipeagit.github.io/gtfstools/articles/gtfstools.html).
+#' - Filtering GTFS feeds. Run `vignette("filtering", package = "gtfstools")` or
+#' check it on the [website](
+#' https://ipeagit.github.io/gtfstools/articles/filtering.html).
 #'
 #' @docType package
 #' @name gtfstools
 #' @aliases gtfstools-package
+#' @useDynLib gtfstools, .registration = TRUE
 #'
 #' @importFrom data.table := .I .SD %chin%
+#' @importFrom utils globalVariables
 "_PACKAGE"
 
 utils::globalVariables(
@@ -45,6 +47,22 @@ utils::globalVariables(
     "arrival_time",
     "departure_time",
     "i.duration",
-    "speed"
+    "speed",
+    "route_id",
+    "trip_id",
+    "stop_id",
+    "route_type",
+    "parent_station",
+    "agency_id",
+    "fare_id",
+    "service_id",
+    "start_date",
+    "end_date",
+    "level_id",
+    "origin_id",
+    "destination_id",
+    "contains_id",
+    "from_stop_id",
+    "to_stop_id"
   )
 )

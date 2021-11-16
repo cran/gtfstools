@@ -7,6 +7,22 @@ context("Get trip speed")
 data_path <- system.file("extdata/spo_gtfs.zip", package = "gtfstools")
 gtfs <- read_gtfs(data_path)
 
+# skip tests if {lwgeom} is not installed
+
+if (!requireNamespace("lwgeom", quietly = TRUE)) {
+
+  expect_error(
+    get_trip_speed(gtfs),
+    regexp = paste0(
+      "The \\'lwgeom\\' package is required to run this function\\. ",
+      "Please install it first\\."
+    )
+  )
+
+  skip("'lwgeom' package required to run get_trip_speed() tests.")
+
+}
+
 
 # tests -------------------------------------------------------------------
 
@@ -194,11 +210,27 @@ test_that("doesn't change given gtfs", {
   gtfs <- read_gtfs(data_path)
   expect_identical(original_gtfs, gtfs)
 
-  speeds <- get_trip_geometry(gtfs, "CPTM L07-0", c("shapes", "stop_times"))
+  speeds <- get_trip_speed(gtfs, "CPTM L07-0", c("shapes", "stop_times"))
   expect_false(identical(original_gtfs, gtfs))
 
   data.table::setindex(gtfs$shapes, NULL)
   data.table::setindex(gtfs$stop_times, NULL)
   expect_identical(original_gtfs, gtfs)
 
+})
+
+# issue #35
+test_that("warnings works properly", {
+  # should raise warning if trip_id is specified and doesn't exist (and should
+  # not calculate speed, instead of returning NA)
+  gtfs$stop_times <- gtfs$stop_times[trip_id != "CPTM L07-0"]
+  expect_warning(
+    speed <- get_trip_speed(gtfs, "CPTM L07-0")
+  )
+  expect_true(nrow(speed) == 0)
+
+  # but if trip_id is not specified, it should not raise a warning
+  expect_silent(speed <- get_trip_speed(gtfs))
+  expect_true(!any("CPTM L07-0" %chin% speed$trip_id))
+  expect_true(all(gtfs$stop_times$trip_id %chin% speed$trip_id))
 })

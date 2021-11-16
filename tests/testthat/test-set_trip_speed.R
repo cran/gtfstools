@@ -7,6 +7,22 @@ context("Set trip speed")
 data_path <- system.file("extdata/spo_gtfs.zip", package = "gtfstools")
 gtfs <- read_gtfs(data_path)
 
+# skip tests if {lwgeom} is not installed
+
+if (!requireNamespace("lwgeom", quietly = TRUE)) {
+
+  expect_error(
+    set_trip_speed(gtfs, "CPTM L07-0", 50),
+    regexp = paste0(
+      "The \\'lwgeom\\' package is required to run this function\\. ",
+      "Please install it first\\."
+    )
+  )
+
+  skip("'lwgeom' package required to run set_trip_speed() tests.")
+
+}
+
 
 # tests -------------------------------------------------------------------
 
@@ -125,7 +141,10 @@ test_that("calculates speeds correctly", {
 
   trips_speeds <- get_trip_speed(new_speeds_gtfs, selected_trip_ids, "shapes")
 
-  expect_identical(round(trips_speeds$speed, 0), c(50, 70, 60))
+  expect_identical(
+    round(trips_speeds[match(trip_id, selected_trip_ids)]$speed, 0),
+    c(50, 60, 70)
+  )
 
   # and should also work if distinct speeds are given with distinct unit (m/s)
 
@@ -143,7 +162,10 @@ test_that("calculates speeds correctly", {
     unit = "m/s"
   )
 
-  expect_identical(round(trips_speeds$speed, 0), c(50, 70, 60))
+  expect_identical(
+    round(trips_speeds[match(trip_id, selected_trip_ids)]$speed, 0),
+    c(50, 60, 70)
+  )
 
 })
 
@@ -239,4 +261,22 @@ test_that("'by_reference' parameter works adequately", {
     original_gtfs$stop_times[trip_id == "CPTM L07-0"]
   ))
 
+})
+
+# issue #37
+test_that("results in identical gtfs if none of the specified trip_ids exist", {
+  # with the exception of stop_times index
+  gtfs <- read_gtfs(data_path)
+
+  # when receives non-existent trip_id raises a warning
+  expect_warning(same_speeds_gtfs <- set_trip_speed(gtfs, "a", 1))
+  expect_false(identical(gtfs, same_speeds_gtfs))
+  data.table::setindex(same_speeds_gtfs$stop_times, NULL)
+  expect_identical(gtfs, same_speeds_gtfs)
+
+  # when receives character(0) remain silent
+  expect_silent(same_speeds_gtfs <- set_trip_speed(gtfs, character(0), 1))
+  expect_false(identical(gtfs, same_speeds_gtfs))
+  data.table::setindex(same_speeds_gtfs$stop_times, NULL)
+  expect_identical(gtfs, same_speeds_gtfs)
 })

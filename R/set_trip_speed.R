@@ -36,15 +36,20 @@
 #'
 #' gtfs <- read_gtfs(data_path)
 #'
-#' gtfs_new_speed <- set_trip_speed(gtfs, trip_id = "CPTM L07-0", 50)
-#' gtfs_new_speed$stop_times[trip_id == "CPTM L07-0"]
+#' # the examples below require the 'lwgeom' package to be installed
+#' if (requireNamespace("lwgeom", quietly = TRUE)) {
 #'
-#' # original gtfs remains unchanged
-#' gtfs$stop_times[trip_id == "CPTM L07-0"]
+#'   gtfs_new_speed <- set_trip_speed(gtfs, trip_id = "CPTM L07-0", 50)
+#'   gtfs_new_speed$stop_times[trip_id == "CPTM L07-0"]
 #'
-#' # now do it by reference
-#' set_trip_speed(gtfs, trip_id = "CPTM L07-0", 50, by_reference = TRUE)
-#' gtfs$stop_times[trip_id == "CPTM L07-0"]
+#'   # original gtfs remains unchanged
+#'   gtfs$stop_times[trip_id == "CPTM L07-0"]
+#'
+#'   # now do it by reference
+#'   set_trip_speed(gtfs, trip_id = "CPTM L07-0", 50, by_reference = TRUE)
+#'   gtfs$stop_times[trip_id == "CPTM L07-0"]
+#'
+#' }
 #'
 #' @export
 set_trip_speed <- function(gtfs,
@@ -54,6 +59,17 @@ set_trip_speed <- function(gtfs,
                            by_reference = FALSE) {
 
   env <- environment()
+
+  # checking if {lwgeom} is installed. {lwgeom} is a {sf} dependency required to
+  # run sf::st_length()
+
+  if (!requireNamespace("lwgeom", quietly = TRUE))
+    stop(
+      "The 'lwgeom' package is required to run this function. ",
+      "Please install it first."
+    )
+
+  # input checking
 
   checkmate::assert_class(gtfs, "dt_gtfs")
   checkmate::assert_character(trip_id)
@@ -71,29 +87,28 @@ set_trip_speed <- function(gtfs,
 
   # check if required fields and files exist
 
-  checkmate::assert(
-    check_gtfs_field_exists(
-      gtfs,
-      "stop_times",
-      c("trip_id", "arrival_time", "departure_time", "stop_sequence")
-    )
+  gtfsio::assert_field_class(
+    gtfs,
+    "stop_times",
+    c("trip_id", "arrival_time", "departure_time", "stop_sequence"),
+    c("character", "character", "character", "integer")
   )
 
   # calculate the length of each given trip_id
 
-  trip_length     <- get_trip_geometry(gtfs, trip_id, file = "shapes")
+  trip_length <- get_trip_geometry(gtfs, trip_id, file = "shapes")
   trip_length_ids <- trip_length$trip_id
-  trip_length     <- sf::st_length(trip_length)
-  trip_length     <- as.numeric(units::set_units(trip_length, "km"))
-  trip_length     <- stats::setNames(trip_length, trip_length_ids)
+  trip_length <- sf::st_length(trip_length)
+  trip_length <- as.numeric(units::set_units(trip_length, "km"))
+  names(trip_length) <- trip_length_ids
 
   # set speed adequate unit (use km/h for calculations)
 
   if (length(speed) == 1) speed <- rep(speed, length(trip_id))
 
   units(speed) <- unit
-  speed        <- as.numeric(units::set_units(speed, "km/h"))
-  speed        <- stats::setNames(speed, trip_id)
+  speed <- as.numeric(units::set_units(speed, "km/h"))
+  names(speed) <- trip_id
 
   # calculate each trip duration (in hours) based on its length and given
   # desired speed. calculate only of those 'trip_id's that exist in 'stop_times'
@@ -122,12 +137,18 @@ set_trip_speed <- function(gtfs,
   ]
   min_stops_index <- min_stops_index$V1
 
-  max_stops_index <- stop_times[
-    trip_id %chin% trip_length_ids,
-    .I[max(stop_sequence)],
-    by = trip_id
-  ]
-  max_stops_index <- max_stops_index$V1
+  # issue #37 - max() raises a warning if it receives a integer(0), which
+  # happens when none of the specified 'trip_id's exist in the gtfs object
+  if (identical(trip_length_ids, character(0))) {
+    max_stops_index <- 0
+  } else {
+    max_stops_index <- stop_times[
+      trip_id %chin% trip_length_ids,
+      .I[max(stop_sequence)],
+      by = trip_id
+    ]
+    max_stops_index <- max_stops_index$V1
+  }
 
   na_time_stops_index <- setdiff(
     desired_trips_index,
