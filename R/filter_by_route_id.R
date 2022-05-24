@@ -3,7 +3,7 @@
 #' Filters a GTFS object by `route_id`s, keeping (or dropping) the relevant
 #' entries in each file.
 #'
-#' @param gtfs A GTFS object.
+#' @template gtfs
 #' @param route_id A character vector. The `route_id`s used to filter the data.
 #' @param keep A logical. Whether the entries related to the specified
 #'   `route_id`s should be kept or dropped (defaults to `TRUE`, which keeps the
@@ -31,12 +31,9 @@
 #'
 #' @export
 filter_by_route_id <- function(gtfs, route_id, keep = TRUE) {
-
-  # input checking
-
   checkmate::assert_class(gtfs, "dt_gtfs")
-  checkmate::assert_character(route_id)
-  checkmate::assert_logical(keep, len = 1)
+  checkmate::assert_character(route_id, any.missing = FALSE)
+  checkmate::assert_logical(keep, len = 1, any.missing = FALSE)
 
   # selecting the filter operator used to filter 'trip_id's based on 'keep' and
   # storing the current environment to filter using the values of 'trip_id'
@@ -277,7 +274,7 @@ filter_by_route_id <- function(gtfs, route_id, keep = TRUE) {
 
   # filtering 'agency' based on relevant_agencies
 
-  if (length(relevant_agencies) >= 1) {
+  if (exists("relevant_agencies")) {
 
     relevant_agencies <- unique(relevant_agencies)
     gtfs$agency <- gtfs$agency[agency_id %chin% relevant_agencies]

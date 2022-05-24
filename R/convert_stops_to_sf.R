@@ -2,7 +2,7 @@
 #'
 #' Converts the `stops` table to a `POINT sf` object.
 #'
-#' @param gtfs A GTFS object.
+#' @template gtfs
 #' @param stop_id A character vector including the `stop_id`s to be converted.
 #'   If `NULL` (the default), all stops are converted.
 #' @param crs The CRS of the resulting object, either as an EPSG code or as an
@@ -24,9 +24,9 @@
 #' @export
 convert_stops_to_sf <- function(gtfs, stop_id = NULL, crs = 4326) {
   checkmate::assert_class(gtfs, "dt_gtfs")
-  checkmate::assert_character(stop_id, null.ok = TRUE)
+  checkmate::assert_character(stop_id, null.ok = TRUE, any.missing = FALSE)
   checkmate::assert(
-    checkmate::check_numeric(crs),
+    checkmate::check_number(crs),
     checkmate::check_class(crs, "crs"),
     combine = "or"
   )

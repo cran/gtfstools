@@ -1,5 +1,3 @@
-context("Read GTFS")
-
 # fix this later - necessary to conditionally run tests that require {zip}
 if (requireNamespace("zip", quietly = TRUE)) {
 
@@ -83,9 +81,13 @@ test_that("raises errors due to incorrect input types", {
   expect_error(read_gtfs(data_path, files = as.factor("stop_times")))
   expect_error(read_gtfs(data_path, fields = NA))
   expect_error(read_gtfs(data_path, skip = as.factor("stop_times")))
+  expect_error(read_gtfs(data_path, skip = NA))
   expect_error(read_gtfs(data_path, quiet = "TRUE"))
+  expect_error(read_gtfs(data_path, quiet = NA))
+  expect_error(read_gtfs(data_path, quiet = c(TRUE, TRUE)))
   expect_error(read_gtfs(data_path, encoding = as.factor("unknown")))
   expect_error(read_gtfs(data_path, encoding = "wrong_encoding"))
+  expect_error(read_gtfs(data_path, encoding = c("unknown", "UTF-8")))
 })
 
 test_that("raises warnings and messages adequately", {
@@ -172,10 +174,6 @@ test_that("date fields are converted to Date objects", {
 
   unconverted_gtfs <- gtfsio::import_gtfs(ggl_path)
   expect_identical(unclass(ggl_gtfs), unclass(unconverted_gtfs))
-})
-
-test_that("'warnings' arguments is deprecated", {
-  expect_warning(read_gtfs(data_path, warnings = TRUE))
 })
 
 }

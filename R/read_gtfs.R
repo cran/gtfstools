@@ -17,11 +17,10 @@
 #'   no files are skipped. Cannot be used if `files` is already set.
 #' @param quiet Whether to hide log messages and progress bars (defaults to
 #'   `TRUE`).
-#' @param encoding A string, ultimately passed to `\link[data.table]{fread}`.
+#' @param encoding A string, ultimately passed to [data.table::fread()].
 #'   Defaults to `"unknown"`. Other possible options are `"UTF-8"` and
 #'   `"Latin-1"`. Please note that this is not used to re-encode the input, but
 #'   to enable handling encoded strings in their native encoding.
-#' @param warnings DEPRECATED. Whether to display warning messages.
 #'
 #' @return A `data.table`-based GTFS object: a `list` of `data.table`s in which
 #' each table represents a GTFS text file.
@@ -34,7 +33,7 @@
 #' for example), which are converted to `Date` objects, instead of being kept as
 #' `integer`s, allowing for easier data manipulation. These columns are
 #' converted back to `integer`s when writing the GTFS object to a `.zip` file
-#' using \code{\link{write_gtfs}}.
+#' using [write_gtfs()].
 #'
 #' @family io functions
 #'
@@ -60,26 +59,23 @@ read_gtfs <- function(path,
                       fields = NULL,
                       skip = NULL,
                       quiet = TRUE,
-                      encoding = "unknown",
-                      warnings) {
+                      encoding = "unknown") {
 
-  # inputs are more thoroughly check in gtfsio::import_gtfs()
+  # inputs are more thoroughly checked in gtfsio::import_gtfs()
 
   checkmate::assert_string(path)
-  checkmate::assert_character(files, null.ok = TRUE)
-  checkmate::assert_list(fields, null.ok = TRUE)
-  checkmate::assert_character(skip, null.ok = TRUE)
-  checkmate::assert_logical(quiet)
-  checkmate::assert_names(
-    encoding,
-    subset.of = c("unknown", "UTF-8", "Latin-1")
+  checkmate::assert_character(files, null.ok = TRUE, any.missing = FALSE)
+  checkmate::assert_list(fields, null.ok = TRUE, any.missing = FALSE)
+  checkmate::assert_character(skip, null.ok = TRUE, any.missing = FALSE)
+  checkmate::assert_logical(quiet, any.missing = FALSE, len = 1)
+  checkmate::assert(
+    checkmate::check_names(
+      encoding,
+      subset.of = c("unknown", "UTF-8", "Latin-1")
+    ),
+    checkmate::check_string(encoding),
+    combine = "and"
   )
-
-  if (!missing(warnings))
-    warning(
-      "Argument 'warnings' is deprecated and has no effect. ",
-      "The argument will be completely removed from v0.3.0 onwards."
-    )
 
   # read gtfs file using {gtfsio} and convert relevant fields from standard type
 

@@ -1,55 +1,58 @@
 #' Set trip average speed
 #'
-#' Sets the average speed of each specified \code{trip_id} by changing the
-#' \code{arrival_time} and \code{departure_time} columns in \code{stop_times}.
+#' Sets the average speed of each specified `trip_id` by changing the
+#' `arrival_time` and `departure_time` columns in `stop_times`.
 #'
-#' @param gtfs A GTFS object as created by \code{\link{read_gtfs}}.
-#' @param trip_id A string vector including the \code{trip_id}s to have their
+#' @template gtfs
+#' @param trip_id A string vector including the `trip_id`s to have their
 #'   average speed set.
 #' @param speed A numeric representing the speed to be set. Its length must
 #'   either equal 1, in which case the value is recycled for all
-#'   \code{trip_id}s, or equal \code{trip_id}'s length.
+#'   `trip_id`s, or equal `trip_id`'s length.
 #' @param unit A string representing the unit in which the speed is given. One
-#'   of \code{"km/h"} (the default) or \code{"m/s"}.
-#' @param by_reference Whether to update \code{stop_times}' \code{data.table} by
-#'   reference. Defaults to \code{FALSE}.
+#'   of `"km/h"` (the default) or `"m/s"`.
+#' @param by_reference Whether to update `stop_times`' `data.table` by
+#'   reference. Defaults to `FALSE`.
 #'
-#' @return If \code{by_reference} is set to \code{FALSE}, returns a GTFS object
-#'   with the time columns of its \code{stop_times} adjusted. Else, returns a
-#'   GTFS object invisibly (note that in this case the original GTFS object is
-#'   altered).
+#' @return If `by_reference` is set to `FALSE`, returns a GTFS object with the
+#'   time columns of its `stop_times` adjusted. Else, returns a GTFS object
+#'   invisibly (note that in this case the original GTFS object is altered).
 #'
 #' @section Details:
-#' The average speed is calculated as the difference between the arrival time at
-#' the last stop minus the departure time at the first top, over the trip's
-#' length (as calculated via \code{\link{get_trip_geometry}}, based on the
-#' \code{shapes} file). The arrival and departure times at all other stops (i.e.
-#' not the first neither the last) are set as \code{""}, which is written as
-#' \code{NA} with \code{\link{write_gtfs}}. Some transport routing software,
-#' such as \href{http://www.opentripplanner.org/}{OpenTripPlanner}, support
-#' specifying stop times like so. In such cases, they estimate arrival/departure
-#' times at the others stops based on the average speed as well. We plan to add
-#' that feature to this function in the future.
+#' The average speed is calculated as the difference between the arrival time
+#' at the last stop minus the departure time at the first top, over the trip's
+#' length (as calculated via [get_trip_geometry()], based on the `shapes`
+#' file). The arrival and departure times at all other stops (i.e. not the
+#' first neither the last) are set as `""`, which is written as `NA` with
+#' [write_gtfs()]. Some transport routing software, such as
+#' [OpenTripPlanner](http://www.opentripplanner.org/), support specifying stop
+#' times like so. In such cases, they estimate arrival/departure times at the
+#' others stops based on the average speed as well. We plan to add that feature
+#' to this function in the future.
 #'
 #' @examples
 #' data_path <- system.file("extdata/spo_gtfs.zip", package = "gtfstools")
 #'
 #' gtfs <- read_gtfs(data_path)
 #'
-#' # the examples below require the 'lwgeom' package to be installed
-#' if (requireNamespace("lwgeom", quietly = TRUE)) {
+#' gtfs_new_speed <- set_trip_speed(gtfs, trip_id = "CPTM L07-0", 50)
+#' gtfs_new_speed$stop_times[trip_id == "CPTM L07-0"]
 #'
-#'   gtfs_new_speed <- set_trip_speed(gtfs, trip_id = "CPTM L07-0", 50)
-#'   gtfs_new_speed$stop_times[trip_id == "CPTM L07-0"]
+#' # use the unit argument to change the speed unit
+#' gtfs_new_speed <- set_trip_speed(
+#'   gtfs,
+#'   trip_id = "CPTM L07-0",
+#'   speed = 15,
+#'   unit = "m/s"
+#' )
+#' gtfs_new_speed$stop_times[trip_id == "CPTM L07-0"]
 #'
-#'   # original gtfs remains unchanged
-#'   gtfs$stop_times[trip_id == "CPTM L07-0"]
+#' # original gtfs remains unchanged
+#' gtfs$stop_times[trip_id == "CPTM L07-0"]
 #'
-#'   # now do it by reference
-#'   set_trip_speed(gtfs, trip_id = "CPTM L07-0", 50, by_reference = TRUE)
-#'   gtfs$stop_times[trip_id == "CPTM L07-0"]
-#'
-#' }
+#' # when doing by reference, original gtfs is changed
+#' set_trip_speed(gtfs, trip_id = "CPTM L07-0", 50, by_reference = TRUE)
+#' gtfs$stop_times[trip_id == "CPTM L07-0"]
 #'
 #' @export
 set_trip_speed <- function(gtfs,
@@ -57,25 +60,13 @@ set_trip_speed <- function(gtfs,
                            speed,
                            unit = "km/h",
                            by_reference = FALSE) {
-
   env <- environment()
 
-  # checking if {lwgeom} is installed. {lwgeom} is a {sf} dependency required to
-  # run sf::st_length()
-
-  if (!requireNamespace("lwgeom", quietly = TRUE))
-    stop(
-      "The 'lwgeom' package is required to run this function. ",
-      "Please install it first."
-    )
-
-  # input checking
-
   checkmate::assert_class(gtfs, "dt_gtfs")
-  checkmate::assert_character(trip_id)
+  checkmate::assert_character(trip_id, any.missing = FALSE)
   checkmate::assert(
-    checkmate::check_numeric(speed, len = 1),
-    checkmate::check_numeric(speed, len = length(trip_id)),
+    checkmate::check_number(speed),
+    checkmate::check_numeric(speed, len = length(trip_id), any.missing = FALSE),
     combine = "or"
   )
   checkmate::assert(
@@ -83,7 +74,7 @@ set_trip_speed <- function(gtfs,
     checkmate::check_names(unit, subset.of = c("km/h", "m/s")),
     combine = "and"
   )
-  checkmate::assert_logical(by_reference)
+  checkmate::assert_logical(by_reference, any.missing = FALSE, len = 1)
 
   # check if required fields and files exist
 

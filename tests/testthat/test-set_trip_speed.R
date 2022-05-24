@@ -1,46 +1,29 @@
-context("Set trip speed")
-
-
-# setup -------------------------------------------------------------------
-
-
 data_path <- system.file("extdata/spo_gtfs.zip", package = "gtfstools")
 gtfs <- read_gtfs(data_path)
-
-# skip tests if {lwgeom} is not installed
-
-if (!requireNamespace("lwgeom", quietly = TRUE)) {
-
-  expect_error(
-    set_trip_speed(gtfs, "CPTM L07-0", 50),
-    regexp = paste0(
-      "The \\'lwgeom\\' package is required to run this function\\. ",
-      "Please install it first\\."
-    )
-  )
-
-  skip("'lwgeom' package required to run set_trip_speed() tests.")
-
-}
 
 
 # tests -------------------------------------------------------------------
 
 
 test_that("raises errors due to incorrect input types/value", {
-
   no_class_gtfs <- gtfs
   attr(no_class_gtfs, "class") <- NULL
-
   expect_error(set_trip_speed(no_class_gtfs, "CPTM L07-0", 50))
   expect_error(set_trip_speed(gtfs, as.factor("CPTM L07-0"), 50))
+  expect_error(set_trip_speed(gtfs, NA, 50))
   expect_error(set_trip_speed(gtfs, "CPTM L07-0", "50"))
   expect_error(
     set_trip_speed(gtfs, c("CPTM L07-0", "6450-51-0", "2105-10-0"), c(50, 60))
   )
+  expect_error(
+    set_trip_speed(gtfs, c("CPTM L07-0", "6450-51-0"), c(50, NA))
+  )
   expect_error(set_trip_speed(gtfs, "CPTM L07-0", 50, unit = "kms/h"))
   expect_error(set_trip_speed(gtfs, "CPTM L07-0", 50, by_reference = "TRUE"))
-
+  expect_error(set_trip_speed(gtfs, "CPTM L07-0", 50, by_reference = NA))
+  expect_error(
+    set_trip_speed(gtfs, "CPTM L07-0", 50, by_reference = c(TRUE, TRUE))
+  )
 })
 
 test_that("raises errors if gtfs doesn't have required files/fields", {
@@ -276,6 +259,14 @@ test_that("results in identical gtfs if none of the specified trip_ids exist", {
 
   # when receives character(0) remain silent
   expect_silent(same_speeds_gtfs <- set_trip_speed(gtfs, character(0), 1))
+  expect_false(identical(gtfs, same_speeds_gtfs))
+  data.table::setindex(same_speeds_gtfs$stop_times, NULL)
+  expect_identical(gtfs, same_speeds_gtfs)
+
+  # also when speed = numeric(0)
+  expect_silent(
+    same_speeds_gtfs <- set_trip_speed(gtfs, character(0), numeric(0))
+  )
   expect_false(identical(gtfs, same_speeds_gtfs))
   data.table::setindex(same_speeds_gtfs$stop_times, NULL)
   expect_identical(gtfs, same_speeds_gtfs)

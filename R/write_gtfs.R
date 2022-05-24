@@ -2,7 +2,7 @@
 #'
 #' Writes GTFS objects as GTFS `.zip` files.
 #'
-#' @param gtfs A GTFS object as created by \code{\link{read_gtfs}}.
+#' @template gtfs
 #' @param path The path to the `.zip` file in which the feed should be written
 #'   to.
 #' @param files A character vector containing the name of the elements to be
@@ -17,11 +17,6 @@
 #'   `TRUE`).
 #' @param quiet Whether to hide log messages and progress bars (defaults to
 #'   `TRUE`).
-#' @param optional DEPRECATED, use `files` instead. Whether to write optional
-#'   `.txt`.
-#' @param extra DEPRECATED, use `files` and `standard_only` instead. Whether to
-#'   write extra `.txt`.
-#' @param warnings DEPRECATED. Whether to display warning messages.
 #'
 #' @return Invisibly returns the same GTFS object passed to the `gtfs`
 #' parameter.
@@ -53,10 +48,7 @@ write_gtfs <- function(gtfs,
                        standard_only = FALSE,
                        as_dir = FALSE,
                        overwrite = TRUE,
-                       quiet = TRUE,
-                       optional,
-                       extra,
-                       warnings) {
+                       quiet = TRUE) {
 
   # inputs are more thoroughly checked on gtfsio::export_gtfs()
 
@@ -66,29 +58,11 @@ write_gtfs <- function(gtfs,
     overwrite = overwrite,
     extension = "zip"
   )
-  checkmate::assert_character(files, null.ok = TRUE)
-  checkmate::assert_logical(standard_only)
-  checkmate::assert_logical(as_dir)
-  checkmate::assert_logical(overwrite)
-
-  if (!missing(optional))
-    warning(
-      "Argument 'optional' is deprecated and has no effect, use 'files' ",
-      "instead. The argument will be completely removed from v0.3.0 onwards."
-    )
-
-  if (!missing(extra))
-    warning(
-      "Argument 'extra' is deprecated and has no effect, use 'files' and ",
-      "'standard_only' instead. ",
-      "The argument will be completely removed from v0.3.0 onwards."
-    )
-
-  if (!missing(warnings))
-    warning(
-      "Argument 'warnings' is deprecated and has no effect. ",
-      "The argument will be completely removed from v0.3.0 onwards."
-    )
+  checkmate::assert_character(files, null.ok = TRUE, any.missing = FALSE)
+  checkmate::assert_logical(standard_only, any.missing = FALSE, len = 1)
+  checkmate::assert_logical(as_dir, any.missing = FALSE, len = 1)
+  checkmate::assert_logical(overwrite, any.missing = FALSE, len = 1)
+  checkmate::assert_logical(quiet, any.missing = FALSE, len = 1)
 
   # convert relevant fields to standard types and write result using {gtfsio}
 

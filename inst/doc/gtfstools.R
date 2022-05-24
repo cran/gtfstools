@@ -28,8 +28,8 @@ spo_path <- file.path(data_path, "spo_gtfs.zip")
 spo_gtfs <- read_gtfs(spo_path)
 names(spo_gtfs)
 
-# only reads the 'shapes.txt' file
-spo_shapes <- read_gtfs(spo_path, files = "shapes")
+# only reads the 'shapes.txt' and 'trips.txt' files
+spo_shapes <- read_gtfs(spo_path, files = c("shapes", "trips"))
 names(spo_shapes)
 
 ## -----------------------------------------------------------------------------
@@ -89,9 +89,9 @@ merged_files <- merge_gtfs(spo_gtfs, ggl_gtfs, files = c("shapes", "trips"))
 names(merged_files)
 
 ## -----------------------------------------------------------------------------
-selected_trips <- c("CPTM L07-0", "2002-10-0")
+selected_trips <- c("2002-10-0", "CPTM L07-0")
 
-get_trip_speed(spo_gtfs, selected_trips)
+get_trip_speed(spo_gtfs, selected_trips, unit = "km/h")
 
 # 'speed' is recycled to all trips if only a single value is given
 new_speed_gtfs <- set_trip_speed(spo_gtfs, selected_trips, 50)

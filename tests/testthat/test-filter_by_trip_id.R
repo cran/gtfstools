@@ -1,9 +1,3 @@
-context("Filter by trip_id")
-
-
-# setup -------------------------------------------------------------------
-
-
 spo_path <- system.file("extdata/spo_gtfs.zip", package = "gtfstools")
 spo_gtfs <- read_gtfs(spo_path)
 spo_trips <- c("CPTM L07-0", "2002-10-0")
@@ -19,7 +13,9 @@ ggl_trips <- "AWE1"
 test_that("raises error due to incorrect input types", {
   expect_error(filter_by_trip_id(unclass(spo_gtfs), spo_trips))
   expect_error(filter_by_trip_id(spo_gtfs, factor(spo_trips)))
+  expect_error(filter_by_trip_id(spo_gtfs, NA))
   expect_error(filter_by_trip_id(spo_gtfs, spo_trips, keep = "TRUE"))
+  expect_error(filter_by_trip_id(spo_gtfs, spo_trips, NA))
 })
 
 test_that("results in a dt_gtfs object", {
@@ -196,4 +192,31 @@ test_that("the function filters google's gtfs correctly", {
 
   # frequencies
   expect_true(all(smaller_ggl$frequencies$trip_id %chin% ggl_trips))
+})
+
+test_that("behaves correctly when trip_id = character(0)", {
+  ber_path <- system.file("extdata/ber_gtfs.zip", package = "gtfstools")
+  ber_gtfs <- read_gtfs(ber_path)
+
+  # if keep = TRUE, gtfs should be empty
+  empty <- filter_by_trip_id(ber_gtfs, character(0))
+  n_rows <- vapply(empty, nrow, FUN.VALUE = integer(1))
+  expect_true(all(n_rows == 0))
+
+  # if keep = FALSE, gtfs should remain unchanged
+  # this is actually not true because the calendar, calendar_dates and agency
+  # tables contain ids not listed in the routes and trips tables, which and up
+  # removed anyway (I like this behaviour, so not considering a bug)
+  full <- filter_by_trip_id(ber_gtfs, character(0), keep = FALSE)
+  modified_ber <- read_gtfs(ber_path)
+  modified_ber$calendar <- modified_ber$calendar[
+    service_id %in% modified_ber$trips$service_id
+  ]
+  modified_ber$calendar_dates <- modified_ber$calendar_dates[
+    service_id %in% modified_ber$trips$service_id
+  ]
+  modified_ber$agency <- modified_ber$agency[
+    agency_id %in% modified_ber$routes$agency_id
+  ]
+  expect_identical(modified_ber, full)
 })

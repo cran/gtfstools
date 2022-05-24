@@ -3,7 +3,7 @@
 #' Returns the speed of each specified `trip_id`, based on the geometry created
 #' from either the `shapes` or the `stop_times` file (or both).
 #'
-#' @param gtfs A GTFS object.
+#' @template gtfs
 #' @param trip_id A character vector including the `trip_id`s to have their
 #'   speeds calculated. If `NULL` (the default), the function calculates the
 #'   speed of every `trip_id` in the GTFS.
@@ -27,45 +27,30 @@
 #'
 #' gtfs <- read_gtfs(data_path)
 #'
-#' # the examples below require the 'lwgeom' package to be installed
-#' if (requireNamespace("lwgeom", quietly = TRUE)) {
+#' trip_speed <- get_trip_speed(gtfs)
+#' head(trip_speed)
 #'
-#'   trip_speed <- get_trip_speed(gtfs)
-#'   head(trip_speed)
+#' trip_ids <- c("CPTM L07-0", "2002-10-0")
+#' trip_speed <- get_trip_speed(gtfs, trip_ids)
+#' trip_speed
 #'
-#'   trip_ids <- c("CPTM L07-0", "2002-10-0")
-#'   trip_speed <- get_trip_speed(gtfs, trip_ids)
-#'   trip_speed
+#' trip_speed <- get_trip_speed(
+#'   gtfs,
+#'   trip_ids,
+#'   file = c("shapes", "stop_times")
+#' )
+#' trip_speed
 #'
-#'   trip_speed <- get_trip_speed(
-#'     gtfs,
-#'     trip_ids,
-#'     file = c("shapes", "stop_times")
-#'   )
-#'   trip_speed
-#'
-#'   trip_speed <- get_trip_speed(gtfs, trip_ids, unit = "m/s")
-#'   trip_speed
-#'
-#' }
+#' trip_speed <- get_trip_speed(gtfs, trip_ids, unit = "m/s")
+#' trip_speed
 #'
 #' @export
 get_trip_speed <- function(gtfs,
                            trip_id = NULL,
                            file = "shapes",
                            unit = "km/h") {
-
-  # checking if {lwgeom} is installed. {lwgeom} is a {sf} dependency required to
-  # run sf::st_length()
-  if (!requireNamespace("lwgeom", quietly = TRUE))
-    stop(
-      "The 'lwgeom' package is required to run this function. ",
-      "Please install it first."
-    )
-
-  # input checking
   checkmate::assert_class(gtfs, "dt_gtfs")
-  checkmate::assert_character(trip_id, null.ok = TRUE)
+  checkmate::assert_character(trip_id, null.ok = TRUE, any.missing = FALSE)
   checkmate::assert_names(file, subset.of = c("shapes", "stop_times"))
   checkmate::assert(
     checkmate::check_string(unit),
@@ -78,6 +63,7 @@ get_trip_speed <- function(gtfs,
   # but it prevents cases where the files required to generate geometries are
   # present but those required to estimate trip duration are not, which would
   # cause errors to be thrown very late)
+
   gtfsio::assert_field_class(
     gtfs,
     "stop_times",
@@ -85,24 +71,8 @@ get_trip_speed <- function(gtfs,
     rep("character", 3)
   )
 
-  # generate desired geometries - checking for required files/fields is done
-  # pretty early into get_trip_geometry code
-
-  trips_geometries <- get_trip_geometry(gtfs, trip_id, file)
-
-  # calculate the length of each geometry
-
-  trips_length <- sf::st_length(trips_geometries)
-  if (unit == "km/h") trips_length <- units::set_units(trips_length, "km")
-  trips_length <- as.numeric(trips_length)
-
-  # create data.table holding the length of each trip
-
-  trips_speed <- data.table::data.table(
-    trip_id     = trips_geometries$trip_id,
-    origin_file = trips_geometries$origin_file,
-    length      = trips_length
-  )
+  length_unit <- ifelse(unit == "km/h", "km", "m")
+  trips_length <- get_trip_length(gtfs, trip_id, file, length_unit)
 
   # calculate trips' duration
   # - a warning might be raised in get_trip_duration() if a trip in
@@ -110,23 +80,22 @@ get_trip_speed <- function(gtfs,
   # don't want to raise that warning, so we remove missing stop_times trips from
   # existing_trips
 
-  existing_trips <- unique(trips_speed$trip_id)
+  existing_trips <- unique(trips_length$trip_id)
   if (is.null(trip_id)) {
     stop_times_trips <- unique(gtfs$stop_times$trip_id)
     existing_trips <- existing_trips[existing_trips %chin% stop_times_trips]
   }
 
   duration_unit <- data.table::fifelse(unit == "km/h", "h", "s")
-
   trips_duration <- get_trip_duration(gtfs, existing_trips, duration_unit)
 
-  # join trips_speed and trips_duration
-  # a trip may be missing from trips_duration and not from trips_speed (when
-  # stop_times doesn't contain a trip listed in trip_speed), but not the other
-  # way around (because only trips listed in trips_speed have their durations
+  # join trips_length and trips_duration
+  # a trip may be missing from trips_duration and not from trips_length (when
+  # stop_times doesn't contain a trip listed in trips_length), but not the other
+  # way around (because only trips listed in trips_length have their durations
   # calculated). so we do a right join here, instead of a left join
 
-  trips_speed <- trips_speed[trips_duration, on = "trip_id"]
+  trips_speed <- trips_length[trips_duration, on = "trip_id"]
 
   # calculate speed as length/duration
 
@@ -137,5 +106,4 @@ get_trip_speed <- function(gtfs,
   trips_speed[, `:=`(length = NULL, duration = NULL)]
 
   return(trips_speed[])
-
 }

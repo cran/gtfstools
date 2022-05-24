@@ -8,18 +8,11 @@
 #'
 #' @keywords internal
 string_to_seconds <- function(string) {
-
   checkmate::assert_character(string)
 
   seconds_from_midgnight <- cpp_time_to_seconds(string)
 
-  # "" strings result in seconds_to_midnight = 0. find those and replace to NA
-
-  index_empty <- which(is.na(string) | string == "")
-  seconds_from_midgnight[index_empty] <- NA_integer_
-
   return(seconds_from_midgnight)
-
 }
 
 
@@ -59,7 +52,7 @@ seconds_to_string <- function(seconds) {
 #'
 #' Creates a copy of a GTFS object without a given file. Used for testing.
 #'
-#' @param gtfs The GTFS to be copied, as created by \code{\link{read_gtfs}}.
+#' @template gtfs
 #' @param file File to be removed.
 #'
 #' @return A GTFS object without the given file.
@@ -90,7 +83,7 @@ copy_gtfs_without_file <- function(gtfs, file) {
 #' Creates a copy of a GTFS object without a given field from a given file. Used
 #' for testing.
 #'
-#' @param gtfs The GTFS to be copied, as created by \code{\link{read_gtfs}}.
+#' @template gtfs
 #' @param file File from which the field must be removed.
 #' @param field Field to be removed.
 #'
@@ -124,7 +117,7 @@ copy_gtfs_without_field <- function(gtfs, file, field) {
 #' Creates a copy of a GTFS object while changing the class of a given field.
 #' Used for testing.
 #'
-#' @param gtfs The GTFS to be copied, as created by \code{\link{read_gtfs}}.
+#' @template gtfs
 #' @param file File whose field must have the class changed.
 #' @param field Field to have the class changed.
 #' @param class The desired class.

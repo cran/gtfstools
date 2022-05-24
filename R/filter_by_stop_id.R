@@ -5,7 +5,7 @@
 #' `stop_times` table, the `stop_id`s are actually used to filter `trip_id`s,
 #' which are then used to filter the rest of the GTFS object.
 #'
-#' @param gtfs A GTFS object.
+#' @template gtfs
 #' @param stop_id A character vector. The `stop_id`s used to filter the data.
 #' @param keep A logical. Whether the entries related to the `trip_id`s that
 #'   passes through the specified `stop_id`s should be kept or dropped (defaults
@@ -33,10 +33,9 @@
 #'
 #' @export
 filter_by_stop_id <- function(gtfs, stop_id, keep = TRUE) {
-
   checkmate::assert_class(gtfs, "dt_gtfs")
-  checkmate::assert_character(stop_id)
-  checkmate::assert_logical(keep, len = 1)
+  checkmate::assert_character(stop_id, any.missing = FALSE)
+  checkmate::assert_logical(keep, len = 1, any.missing = FALSE)
 
   env <- environment()
 

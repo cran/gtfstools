@@ -1,8 +1,3 @@
-context("Convert shapes to sf")
-
-
-# setup -------------------------------------------------------------------
-
 data_path <- system.file("extdata/spo_gtfs.zip", package = "gtfstools")
 gtfs <- read_gtfs(data_path)
 
@@ -14,7 +9,9 @@ test_that("raises errors due to incorrect input types", {
 
   expect_error(convert_shapes_to_sf(no_class_gtfs))
   expect_error(convert_shapes_to_sf(gtfs, shape_id = as.factor("17846")))
+  expect_error(convert_shapes_to_sf(gtfs, shape_id = NA))
   expect_error(convert_shapes_to_sf(gtfs, crs = "4326"))
+  expect_error(convert_shapes_to_sf(gtfs, crs = NA))
 
   wrong_types_gtfs <- read_gtfs(data_path)
   wrong_types_gtfs$shapes[, shape_id := as.factor(shape_id)]
@@ -34,15 +31,6 @@ test_that("raises errors due to incorrect input types", {
     `:=`(
       shape_pt_lon = as.numeric(shape_pt_lon),
       shape_pt_lat = as.character(shape_pt_lat)
-    )
-  ]
-  expect_error(convert_shapes_to_sf(wrong_types_gtfs))
-
-  wrong_types_gtfs$shapes[
-    ,
-    `:=`(
-      shape_pt_lat = as.numeric(shape_pt_lon),
-      shape_pt_sequence = as.character(shape_pt_sequence)
     )
   ]
   expect_error(convert_shapes_to_sf(wrong_types_gtfs))

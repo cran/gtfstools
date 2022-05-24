@@ -7,7 +7,7 @@
 get_trip_speed(gtfs, trip_id = NULL, file = "shapes", unit = "km/h")
 }
 \arguments{
-\item{gtfs}{A GTFS object.}
+\item{gtfs}{A GTFS object, as created by \code{\link[=read_gtfs]{read_gtfs()}}.}
 
 \item{trip_id}{A character vector including the \code{trip_id}s to have their
 speeds calculated. If \code{NULL} (the default), the function calculates the
@@ -39,27 +39,22 @@ data_path <- system.file("extdata/spo_gtfs.zip", package = "gtfstools")
 
 gtfs <- read_gtfs(data_path)
 
-# the examples below require the 'lwgeom' package to be installed
-if (requireNamespace("lwgeom", quietly = TRUE)) {
+trip_speed <- get_trip_speed(gtfs)
+head(trip_speed)
 
-  trip_speed <- get_trip_speed(gtfs)
-  head(trip_speed)
+trip_ids <- c("CPTM L07-0", "2002-10-0")
+trip_speed <- get_trip_speed(gtfs, trip_ids)
+trip_speed
 
-  trip_ids <- c("CPTM L07-0", "2002-10-0")
-  trip_speed <- get_trip_speed(gtfs, trip_ids)
-  trip_speed
+trip_speed <- get_trip_speed(
+  gtfs,
+  trip_ids,
+  file = c("shapes", "stop_times")
+)
+trip_speed
 
-  trip_speed <- get_trip_speed(
-    gtfs,
-    trip_ids,
-    file = c("shapes", "stop_times")
-  )
-  trip_speed
-
-  trip_speed <- get_trip_speed(gtfs, trip_ids, unit = "m/s")
-  trip_speed
-
-}
+trip_speed <- get_trip_speed(gtfs, trip_ids, unit = "m/s")
+trip_speed
 
 }
 \seealso{

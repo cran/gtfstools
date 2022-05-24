@@ -11,14 +11,11 @@ write_gtfs(
   standard_only = FALSE,
   as_dir = FALSE,
   overwrite = TRUE,
-  quiet = TRUE,
-  optional,
-  extra,
-  warnings
+  quiet = TRUE
 )
 }
 \arguments{
-\item{gtfs}{A GTFS object as created by \code{\link{read_gtfs}}.}
+\item{gtfs}{A GTFS object, as created by \code{\link[=read_gtfs]{read_gtfs()}}.}
 
 \item{path}{The path to the \code{.zip} file in which the feed should be written
 to.}
@@ -39,14 +36,6 @@ file).}
 
 \item{quiet}{Whether to hide log messages and progress bars (defaults to
 \code{TRUE}).}
-
-\item{optional}{DEPRECATED, use \code{files} instead. Whether to write optional
-\code{.txt}.}
-
-\item{extra}{DEPRECATED, use \code{files} and \code{standard_only} instead. Whether to
-write extra \code{.txt}.}
-
-\item{warnings}{DEPRECATED. Whether to display warning messages.}
 }
 \value{
 Invisibly returns the same GTFS object passed to the \code{gtfs}

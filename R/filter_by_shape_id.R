@@ -3,7 +3,7 @@
 #' Filters a GTFS object by `shape_id`s, keeping (or dropping) the relevant
 #' entries in each file.
 #'
-#' @param gtfs A GTFS object.
+#' @template gtfs
 #' @param shape_id A character vector. The `shape_id`s used to filter the data.
 #' @param keep A logical. Whether the entries related to the specified
 #'   `shape_id`s should be kept or dropped (defaults to `TRUE`, which keeps the
@@ -31,12 +31,9 @@
 #'
 #' @export
 filter_by_shape_id <- function(gtfs, shape_id, keep = TRUE) {
-
-  # input checking
-
   checkmate::assert_class(gtfs, "dt_gtfs")
-  checkmate::assert_character(shape_id)
-  checkmate::assert_logical(keep, len = 1)
+  checkmate::assert_character(shape_id, any.missing = FALSE)
+  checkmate::assert_logical(keep, len = 1, any.missing = FALSE)
 
   # selecting the filter operator used to filter 'shape_id's based on 'keep' and
   # storing the current environment to filter using the values of 'shape_id'
@@ -162,7 +159,7 @@ filter_by_shape_id <- function(gtfs, shape_id, keep = TRUE) {
     # 'agency' (agency_id, that comes both from routes and fare_attributes)
 
     if (gtfsio::check_field_exists(gtfs, "agency", "agency_id") &&
-        length(relevant_agencies) > 0) {
+        exists("relevant_agencies")) {
 
       # keeping only unique agency_ids from relevant_agencies, since they may
       # come from two different sources

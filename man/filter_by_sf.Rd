@@ -7,7 +7,7 @@
 filter_by_sf(gtfs, geom, spatial_operation = sf::st_intersects, keep = TRUE)
 }
 \arguments{
-\item{gtfs}{A GTFS object.}
+\item{gtfs}{A GTFS object, as created by \code{\link[=read_gtfs]{read_gtfs()}}.}
 
 \item{geom}{An \code{sf} object. Describes the geometry used to filter the data.}
 
@@ -56,10 +56,14 @@ object.size(smaller_gtfs)
 }
 \seealso{
 Other filtering functions: 
+\code{\link{filter_by_agency_id}()},
 \code{\link{filter_by_route_id}()},
 \code{\link{filter_by_route_type}()},
+\code{\link{filter_by_service_id}()},
 \code{\link{filter_by_shape_id}()},
 \code{\link{filter_by_stop_id}()},
-\code{\link{filter_by_trip_id}()}
+\code{\link{filter_by_time_of_day}()},
+\code{\link{filter_by_trip_id}()},
+\code{\link{filter_by_weekday}()}
 }
 \concept{filtering functions}

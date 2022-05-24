@@ -4,7 +4,7 @@
 #' dropping) entries related to shapes and trips selected through a spatial
 #' operation.
 #'
-#' @param gtfs A GTFS object.
+#' @template gtfs
 #' @param geom An `sf` object. Describes the geometry used to filter the data.
 #' @param spatial_operation A spatial operation function from the set of
 #'   options listed in [geos_binary_pred][sf::geos_binary_pred] (check the
@@ -60,7 +60,7 @@ filter_by_sf <- function(gtfs,
 
   # convert 'geom' to polygon if a bounding box was given
 
-  if (inherits(geom, "bbox")) geom <- polygon_from_bbox(geom)
+  if (inherits(geom, "bbox")) geom <- sf::st_buffer(sf::st_as_sfc(geom), 0)
 
   # raise an error if 'geom' crs is not 4326, and merge features if geom more
   # than one feature
@@ -118,34 +118,5 @@ filter_by_sf <- function(gtfs,
   result_gtfs <- remove_duplicates(result_gtfs)
 
   return(result_gtfs)
-
-}
-
-
-
-#' Build a bouding box polygon
-#'
-#' Builds a polygon from a bounding box object.
-#'
-#' @param bbox A bouding box object.
-#'
-#' @keywords internal
-polygon_from_bbox <- function(bbox) {
-
-  checkmate::assert_class(bbox, "bbox")
-
-  polygon <- sf::st_polygon(
-    list(rbind(
-      c(bbox$xmin, bbox$ymin),
-      c(bbox$xmin, bbox$ymax),
-      c(bbox$xmax, bbox$ymax),
-      c(bbox$xmax, bbox$ymin),
-      c(bbox$xmin, bbox$ymin)
-    ))
-  )
-  polygon <- sf::st_sf(geom = sf::st_sfc(polygon), crs = 4326)
-  polygon <- sf::st_buffer(polygon, dist = 0)
-
-  return(polygon)
 
 }

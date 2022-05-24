@@ -7,7 +7,7 @@
 filter_by_shape_id(gtfs, shape_id, keep = TRUE)
 }
 \arguments{
-\item{gtfs}{A GTFS object.}
+\item{gtfs}{A GTFS object, as created by \code{\link[=read_gtfs]{read_gtfs()}}.}
 
 \item{shape_id}{A character vector. The \code{shape_id}s used to filter the data.}
 
@@ -41,10 +41,14 @@ object.size(smaller_gtfs)
 }
 \seealso{
 Other filtering functions: 
+\code{\link{filter_by_agency_id}()},
 \code{\link{filter_by_route_id}()},
 \code{\link{filter_by_route_type}()},
+\code{\link{filter_by_service_id}()},
 \code{\link{filter_by_sf}()},
 \code{\link{filter_by_stop_id}()},
-\code{\link{filter_by_trip_id}()}
+\code{\link{filter_by_time_of_day}()},
+\code{\link{filter_by_trip_id}()},
+\code{\link{filter_by_weekday}()}
 }
 \concept{filtering functions}

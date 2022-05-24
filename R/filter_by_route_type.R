@@ -3,7 +3,7 @@
 #' Filters a GTFS object by `route_type`s, keeping (or dropping) the relevant
 #' entries in each file.
 #'
-#' @param gtfs A GTFS object.
+#' @template gtfs
 #' @param route_type An integer vector. The `route_type`s used to filter the
 #'   data.
 #' @param keep A logical. Whether the entries related to the specified
@@ -51,12 +51,9 @@
 #'
 #' @export
 filter_by_route_type <- function(gtfs, route_type, keep = TRUE) {
-
-  # input checking
-
   checkmate::assert_class(gtfs, "dt_gtfs")
   checkmate::assert_integerish(route_type)
-  checkmate::assert_logical(keep, len = 1)
+  checkmate::assert_logical(keep, len = 1, any.missing = FALSE)
 
   possible_types <- c(0, 1, 2, 3, 4, 5, 6, 7, 11, 12)
   checkmate::assert_names(

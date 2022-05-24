@@ -18,8 +18,10 @@
 #' @aliases gtfstools-package
 #' @useDynLib gtfstools, .registration = TRUE
 #'
-#' @importFrom data.table := .I .SD %chin%
+#' @importFrom data.table := .I .SD %chin% .GRP .N
 #' @importFrom utils globalVariables
+#'
+#' @keywords internal
 "_PACKAGE"
 
 utils::globalVariables(
@@ -63,6 +65,31 @@ utils::globalVariables(
     "destination_id",
     "contains_id",
     "from_stop_id",
-    "to_stop_id"
+    "to_stop_id",
+    "start_time_secs",
+    "start_time",
+    "end_time_secs",
+    "end_time",
+    "start_time_secs",
+    "end_time_secs",
+    "headway_secs",
+    "..other_cols",
+    "checked",
+    "children_list",
+    "from_to_within",
+    "within_from_to",
+    "from_within",
+    "to_within",
+    "is_duplicated",
+    "exact_times",
+    "filtered_n_stops",
+    "i.n_stops",
+    "n_stops",
+    "i.length",
+    "pattern_id",
+    "data",
+    "template_departure",
+    "template_arrival",
+    "origin_gtfs"
   )
 )
