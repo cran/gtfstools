@@ -1,497 +1,265 @@
-context("Validate GTFS")
+testthat::skip_if_offline() # calls skip_on_cran()
 
-# validate_gtfs() is deprecated, so basically this whole file will be skipped,
-# as adjusting the tests would be kinda pointless and very tiresome
+available_versions <- c(
+  "latest",
+  "4.0.0",
+  "3.1.1",
+  "3.1.0",
+  "3.0.1",
+  "3.0.0"
+)
 
 data_path <- system.file("extdata/spo_gtfs.zip", package = "gtfstools")
-gtfs <- read_gtfs(data_path)
+gtfs_url <- "https://github.com/ipeaGIT/gtfstools/raw/master/inst/extdata/spo_gtfs.zip"
+gtfs <- read_gtfs(data_path, encoding = "UTF-8")
+gtfs_dir <- tempfile("gtfs")
 
-expect_warning(validate_gtfs(gtfs))
+write_gtfs(gtfs, gtfs_dir, as_dir = TRUE)
 
-a_warning <- tryCatch(
-  validate_gtfs(gtfs),
-  warning = function(cnd) cnd
-)
+output_dir <- tempfile("validate_gtfs_tests")
+validator <- download_validator(tempdir())
 
-expect_s3_class(a_warning, "deprecatedWarning")
-
-testthat::skip("Skipping validate_gtfs() tests because it is now deprecated.")
-
-
-
-# setup -------------------------------------------------------------------
-
-full_val <- validate_gtfs(gtfs)
-full_val <- attr(full_val, "validation_result")
-
-partial_val_1 <- validate_gtfs(gtfs, "stop_times")
-partial_val_1 <- attr(partial_val_1, "validation_result")
-
-partial_val_2 <- validate_gtfs(gtfs, c("stop_times", "agency"))
-partial_val_2 <- attr(partial_val_2, "validation_result")
-
-extra_file_gtfs <- gtfs
-extra_file_gtfs$extra_file <- extra_file_gtfs$calendar
-extra_file_gtfs <- validate_gtfs(extra_file_gtfs)
-extra_file_val <- attr(extra_file_gtfs, "validation_result")
-
-extra_field_gtfs <- gtfs
-extra_field_gtfs$calendar <- data.table::copy(gtfs$calendar)
-extra_field_gtfs$calendar[, extra_field := "ola"]
-extra_field_gtfs$shapes <- data.table::copy(gtfs$shapes)
-extra_field_gtfs$shapes[, additional_field := 2]
-extra_field_gtfs <- validate_gtfs(extra_field_gtfs)
-extra_field_val <- attr(extra_field_gtfs, "validation_result")
-
-missing_req_file_gtfs <- gtfs
-missing_req_file_gtfs$agency <- NULL
-missing_req_file_gtfs <- validate_gtfs(missing_req_file_gtfs, warnings = FALSE)
-missing_req_file_val <- attr(missing_req_file_gtfs, "validation_result")
-
-missing_req_field_gtfs <- gtfs
-missing_req_field_gtfs$stop_times <- data.table::copy(gtfs$stop_times)
-missing_req_field_gtfs$stop_times[, trip_id := NULL]
-missing_req_field_gtfs <- validate_gtfs(
-  missing_req_field_gtfs,
-  warnings = FALSE
-)
-missing_req_field_val <- attr(missing_req_field_gtfs, "validation_result")
-
-specified_files <- c(
-  "agency", "stops", "routes", "trips", "stop_times", "calendar",
-  "calendar_dates", "fare_attributes", "fare_rules", "shapes", "frequencies",
-  "transfers", "pathways", "levels", "feed_info", "translations", "attributions"
-)
-
-required_files <- c(
-  "agency", "stops", "routes", "trips", "stop_times", "calendar"
-)
-
-# files' fields
-
-agency_field <- c(
-  "agency_id", "agency_name", "agency_url", "agency_timezone", "agency_lang",
-  "agency_phone", "agency_fare_url", "agency_email"
-)
-
-stops_field <- c(
-  "stop_id", "stop_code", "stop_name", "stop_desc", "stop_lat", "stop_lon",
-  "zone_id", "stop_url", "location_type", "parent_station", "stop_timezone",
-  "wheelchair_boarding", "level_id", "platform_code"
-)
-
-routes_field <- c(
-  "route_id", "agency_id", "route_short_name", "route_long_name", "route_desc",
-  "route_type", "route_url", "route_color", "route_text_color",
-  "route_sort_order", "continuous_pickup", "continuous_drop_off"
-)
-
-trips_field <- c(
-  "route_id", "service_id", "trip_id", "trip_headsign", "trip_short_name",
-  "direction_id", "block_id", "shape_id", "wheelchair_accessible",
-  "bikes_allowed"
-)
-
-stop_times_field <- c(
-  "trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence",
-  "stop_headsign", "pickup_type", "drop_off_type", "continuous_pickup",
-  "continuous_drop_off", "shape_dist_traveled", "timepoint"
-)
-
-calendar_field <- c(
-  "service_id", "monday", "tuesday", "wednesday", "thursday", "friday",
-  "saturday", "sunday", "start_date", "end_date"
-)
-
-calendar_dates_field <- c("service_id", "date", "exception_type")
-
-fare_attributes_field <- c(
-  "agency_id", "fare_id", "price", "currency_type", "payment_method",
-  "transfers", "transfer_duration"
-)
-
-fare_rules_field <- c(
-  "fare_id", "route_id", "origin_id", "destination_id", "contains_id"
-)
-
-shapes_field <- c(
-  "shape_id", "shape_pt_lat", "shape_pt_lon", "shape_pt_sequence",
-  "shape_dist_traveled"
-)
-
-frequencies_field <- c(
-  "trip_id", "start_time", "end_time", "headway_secs", "exact_times"
-)
-
-transfers_field <- c(
-  "from_stop_id", "to_stop_id", "transfer_type", "min_transfer_time"
-)
-
-pathways_field <- c(
-  "pathway_id", "from_stop_id", "to_stop_id", "pathway_mode",
-  "is_bidirectional", "length", "traversal_time", "stair_count", "max_slope",
-  "min_width", "signposted_as", "reversed_signposted_as"
-)
-
-levels_field <- c("level_id", "level_index", "level_name")
-
-feed_info_field <- c(
-  "feed_publisher_name", "feed_publisher_url", "feed_lang", "feed_start_date",
-  "feed_end_date", "feed_version", "feed_contact_email", "feed_contact_url"
-)
-
-translations_field <- c(
-  "table_name", "field_name", "language", "translation", "record_id",
-  "record_sub_id", "field_value"
-)
-
-attributions_field <- c(
-  "attribution_id", "agency_id", "route_id", "trip_id", "organization_name",
-  "is_producer", "is_operator", "is_authority", "attribution_url",
-  "attribution_email", "attribution_phone"
-)
-
-
-# tests -------------------------------------------------------------------
-
-test_that("raises errors due to incorrect input types", {
-
-  no_class_gtfs <- gtfs
-  attr(no_class_gtfs, "class") <- NULL
-
-  expect_error(validate_gtfs(no_class_gtfs))
-  expect_error(validate_gtfs(gtfs, files = NA))
-  expect_error(validate_gtfs(gtfs, files = as.factor("stop_times")))
-  expect_error(validate_gtfs(gtfs, quiet = "TRUE"))
-  expect_error(validate_gtfs(gtfs, warnings = "TRUE"))
-
-})
-
-test_that("raises error due to non-existent/mistyped supplied file in gtfs", {
-  expect_error(validate_gtfs(gtfs, files = "agency.txt"))
-  expect_error(validate_gtfs(gtfs, files = "non-existent-file"))
-})
-
-test_that("raises warnings and messages adequately", {
-  expect_silent(validate_gtfs(gtfs))
-  expect_silent(validate_gtfs(gtfs, "stop_times"))
-  expect_silent(validate_gtfs(gtfs, c("stop_times", "agency")))
-  expect_silent(validate_gtfs(extra_file_gtfs))
-  expect_silent(validate_gtfs(extra_field_gtfs))
-  expect_silent(validate_gtfs(missing_req_file_gtfs, warnings = FALSE))
-  expect_silent(validate_gtfs(missing_req_field_gtfs, warnings = FALSE))
-  expect_message(validate_gtfs(gtfs, quiet = FALSE))
-  expect_message(validate_gtfs(gtfs, "stop_times", quiet = FALSE))
-  expect_message(validate_gtfs(gtfs, c("stop_times", "agency"), quiet = FALSE))
-  expect_message(validate_gtfs(extra_file_gtfs, quiet = FALSE))
-  expect_message(validate_gtfs(extra_field_gtfs, quiet = FALSE))
-  expect_silent(
-    validate_gtfs(missing_req_file_gtfs, warnings = FALSE, quiet = FALSE)
+tester <- function(gtfs = data_path,
+                   output_path = output_dir,
+                   validator_path = validator,
+                   overwrite = TRUE,
+                   html_preview = TRUE,
+                   pretty_json = FALSE,
+                   quiet = TRUE,
+                   n_threads = 2) {
+  validate_gtfs(
+    gtfs,
+    output_path,
+    validator_path,
+    overwrite,
+    html_preview,
+    pretty_json,
+    quiet,
+    n_threads
   )
-  expect_silent(
-    validate_gtfs(missing_req_field_gtfs, warnings = FALSE, quiet = FALSE)
+}
+
+test_that("raises error due to incorrect input", {
+  invalid_file <- tempfile()
+  file.create(invalid_file)
+
+  expect_error(tester(gtfs = unclass(gtfs)))
+  expect_error(tester(gtfs = invalid_file))
+  expect_error(tester(gtfs = dirname(gtfs_url)))
+  expect_error(tester(gtfs = "hehe"))
+
+  expect_error(tester(output_path = 1))
+  expect_error(tester(output_path = "oi/ola"))
+  expect_error(tester(output_path = c("oi", "oi")))
+
+  expect_error(tester(validator_path = 1))
+  expect_error(tester(validator_path = c("R", "R")))
+  expect_error(tester(validator_path = tempdir()))
+  expect_error(tester(validator_path = invalid_file))
+
+  expect_error(tester(overwrite = 1))
+  expect_error(tester(overwrite = c(TRUE, TRUE)))
+  expect_error(tester(overwrite = NA))
+
+  expect_error(tester(html_preview = 1))
+  expect_error(tester(html_preview = c(TRUE, TRUE)))
+  expect_error(tester(html_preview = NA))
+
+  expect_error(tester(pretty_json = 1))
+  expect_error(tester(pretty_json = c(TRUE, TRUE)))
+  expect_error(tester(pretty_json = NA))
+
+  expect_error(tester(quiet = 1))
+  expect_error(tester(quiet = c(TRUE, TRUE)))
+  expect_error(tester(quiet = NA))
+
+  expect_error(tester(n_threads = "1"))
+  expect_error(tester(n_threads = 0))
+  expect_error(tester(n_threads = parallel::detectCores() + 1))
+  expect_error(tester(n_threads = Inf))
+  expect_error(tester(n_threads = c(1, 1)))
+})
+
+test_that("doesn't overwrite existing results with overwrite = FALSE", {
+  tmpdir <- tempdir()
+  create_test_delete <- function(file) {
+    file_path <- file.path(tmpdir, file)
+    file.create(file_path)
+    expect_error(tester(output_path = tmpdir, overwrite = FALSE))
+    file.remove(file_path)
+  }
+  create_test_delete("report.html")
+  create_test_delete("report.json")
+  create_test_delete("system_errors.json")
+  create_test_delete("validation_stdout.txt")
+  create_test_delete("validation_stderr.txt")
+})
+
+test_that("errors if validator_basename is not gtfs-validator-vX.Y.Z.jar", {
+  invalid_validator_path <- sub("\\.jar$", "", validator)
+  expect_error(tester(validator_path = invalid_validator_path))
+})
+
+validation_works <- function(input,
+                             validator_version = "latest",
+                             pretty_json = FALSE) {
+  validation_dir <- tempfile(paste0("validator_", validator_version))
+  validator_path <- download_validator(tempdir(), validator_version)
+  validator_numeric_version <- gtfstools:::parse_validator_version(
+    validator_path
   )
-  expect_warning(validate_gtfs(missing_req_file_gtfs))
-  expect_warning(validate_gtfs(missing_req_field_gtfs))
-})
 
-test_that("results in a dt_gtfs, and validation_result has right col types", {
+  validation_result <- tester(
+    input,
+    validation_dir,
+    validator_path = validator_path,
+    html_preview = FALSE,
+    pretty_json = pretty_json
+  )
 
-  # validate_gtfs results in a dt_gtfs
+  if (validator_numeric_version >= numeric_version("3.1.0")) {
+    expect_true(file.exists(file.path(validation_dir, "report.html")))
+  }
 
-  expect_s3_class(validate_gtfs(gtfs), "dt_gtfs")
+  if (validator_numeric_version < numeric_version("3.1.0")) {
+    expect_true(file.exists(file.path(validation_dir, "validation_stdout.txt")))
+  }
 
-  # validation result is a data.table
+  expect_true(file.exists(file.path(validation_dir, "report.json")))
+  expect_true(file.exists(file.path(validation_dir, "system_errors.json")))
+  expect_true(file.exists(file.path(validation_dir, "validation_stderr.txt")))
+  expect_identical(validation_result, normalizePath(validation_dir))
 
-  expect_s3_class(full_val, "data.table")
+  return(invisible(validation_result))
+}
 
-  # columns' types
+get_result_json <- function(validation_dir) {
+  json_report_path <- file.path(validation_dir, "report.json")
+  json_report <- jsonlite::fromJSON(json_report_path)
+  return(json_report)
+}
 
-  expect_equal(class(full_val$file), "character")
-  expect_equal(class(full_val$file_provided_status), "logical")
-  expect_equal(class(full_val$field), "character")
-  expect_equal(class(full_val$field_spec), "character")
-  expect_equal(class(full_val$field_provided_status), "logical")
-  expect_equal(class(full_val$validation_status), "character")
-  expect_equal(class(full_val$validation_details), "character")
+test_that("works with the 4 types of input (url, path, dir, object)", {
+  obj_dir <- validation_works(gtfs)
+  path_dir <- validation_works(data_path)
+  url_dir <- validation_works(gtfs_url)
+  dir_dir <- validation_works(gtfs_dir)
 
-})
+  # and their validation report should be the same
+  # (results from dir are in a different order)
 
-test_that("doesn't change original gtfs (only validation_result attribute)", {
+  if (requireNamespace("jsonlite", quietly = TRUE)) {
+    obj_result <- get_result_json(obj_dir)
+    path_result <- get_result_json(path_dir)
+    url_result <- get_result_json(url_dir)
+    dir_result <- get_result_json(dir_dir)
 
-  no_val_gtfs <- gtfs
-  attr(no_val_gtfs, "validation_result") <- NULL
-  pre_validation_no_val_gtfs <- no_val_gtfs
+    expect_identical(obj_result, path_result)
+    expect_identical(obj_result, url_result)
 
-  validated_gtfs <- validate_gtfs(no_val_gtfs)
-
-  expect_identical(no_val_gtfs, pre_validation_no_val_gtfs)
-  expect_false(identical(no_val_gtfs, validated_gtfs))
-
-  # the difference between validated_gtfs and no_val_gtfs is the
-  # validation_result
-
-  val_result <- attr(validated_gtfs, "validation_result")
-  attr(no_val_gtfs, "validation_result") <- val_result
-
-  expect_identical(no_val_gtfs, validated_gtfs)
-
-})
-
-test_that("validates against the correct files", {
-
-  # all files
-
-  validated_files <- unique(full_val$file)
-  expect_equal(sum(validated_files %in% specified_files), 17)
-
-  # only stop_times
-
-  validated_files <- unique(partial_val_1$file)
-  expect_true(validated_files == "stop_times")
-
-  # only stop_times and agency
-
-  validated_files <- unique(partial_val_2$file)
-  expect_equal(sum(validated_files %in% c("stop_times", "agency")), 2)
-
-})
-
-test_that("validates all fields from desired files", {
-
-  # full validation
-
-  validated_files <- unique(full_val$file)
-  invisible(lapply(
-    validated_files,
-    function (i) {
-      supposed_fields <- get(paste0(i, "_field"))
-      expect_equal(
-        sum(full_val[file == i]$field %in% supposed_fields),
-        length(supposed_fields)
-      )
+    ordered_results <- function(result) {
+      notices <- result$notices$sampleNotices
+      notices <- lapply(notices, data.table::setDT)
+      notices[[1]] <- notices[[1]][order(filename)]
+      notices[[4]] <- notices[[4]][order(filename)]
     }
-  ))
-
-  # partial validation 1 - only stop_times
-
-  supposed_fields <- stop_times_field
-  expect_equal(
-    sum(partial_val_1$field %in% supposed_fields),
-    length(supposed_fields)
-  )
-
-  # partial validation 2 - stop_times and agency
-
-  validated_files <- unique(partial_val_2$file)
-  invisible(lapply(
-    validated_files,
-    function (i) {
-      supposed_fields <- get(paste0(i, "_field"))
-      expect_equal(
-        sum(full_val[file == i]$field %in% supposed_fields),
-        length(supposed_fields)
-      )
-    }
-  ))
-
+    expect_identical(ordered_results(obj_result), ordered_results(dir_result))
+  }
 })
 
-test_that("recognizes extra files and fields as extra", {
-
-  # extra file
-
-  expect_equal(
-    sum(extra_file_val[file == "extra_file"]$file_spec == "ext"),
-    length(extra_file_val[file == "extra_file"]$field)
-  )
-  expect_equal(
-    sum(extra_file_val[file == "extra_file"]$field_spec == "ext"),
-    length(extra_file_val[file == "extra_file"]$field)
-  )
-  expect_equal(
-    sum(extra_file_val[file == "extra_file"]$file_provided_status == TRUE),
-    length(extra_file_val[file == "extra_file"]$field)
-  )
-  expect_equal(
-    sum(extra_file_val[file == "extra_file"]$field_provided_status == TRUE),
-    length(extra_file_val[file == "extra_file"]$field)
-  )
-
-  # extra field in required and optional files
-
-  expect_equal(
-    extra_field_val[file == "calendar" & field == "extra_field"]$field_spec,
-    "ext"
-  )
-  expect_equal(
-    extra_field_val[file == "shapes" & field == "additional_field"]$field_spec,
-    "ext"
-  )
-  expect_equal(
-    sum(extra_field_val[file == "calendar"]$field_spec == "ext"),
-    1
-  )
-  expect_equal(
-    sum(extra_field_val[file == "shapes"]$field_spec == "ext"),
-    1
-  )
-  expect_true(
-    extra_field_val[file == "calendar" & field == "extra_field"]$field_provided_status,
-  )
-  expect_true(
-    extra_field_val[file == "shapes" & field == "additional_field"]$field_provided_status,
-  )
-
+test_that("all versions of the validation work", {
+  for (version in available_versions) {
+    validation_works(data_path, version)
+  }
 })
 
-test_that("attributes have right validation status and details", {
-
-  # ok
-
-  ok_status <- full_val[
-    file_provided_status == TRUE & field_provided_status == TRUE
-  ]
-  expect_equal(sum(ok_status$validation_status == "ok"), nrow(ok_status))
-  expect_equal(sum(is.na(ok_status$validation_details)), nrow(ok_status))
-
-  # info: missing_opt_file
-
-  file_info_status <- full_val[
-    file_spec == "opt" & file_provided_status == FALSE
-  ]
-  expect_equal(
-    sum(file_info_status$validation_status == "info"),
-    nrow(file_info_status)
-  )
-  expect_equal(
-    sum(file_info_status$validation_details == "missing_opt_file"),
-    nrow(file_info_status)
+test_that("pretty_json works with all functions and results are the same", {
+  pretty_results <- vapply(
+    available_versions,
+    function(v) validation_works(data_path, v, pretty_json = TRUE),
+    character(1)
   )
 
-  # problem: missing_req_file
-
-  file_problem_status <- missing_req_file_val[
-    file_spec == "req" & file_provided_status == FALSE
-  ]
-  expect_equal(
-    sum(file_problem_status$validation_status == "problem"),
-    nrow(file_problem_status)
-  )
-  expect_equal(
-    sum(file_problem_status$validation_details == "missing_req_file"),
-    nrow(file_problem_status)
+  non_pretty_results <- vapply(
+    available_versions,
+    function(v) validation_works(data_path, v, pretty_json = FALSE),
+    character(1)
   )
 
-  # info: undocumented_file
+  json_as_character_length <- function(validation_dir) {
+    json_path <- file.path(validation_dir, "report.json")
+    json_content <- readLines(json_path)
+    json_length <- length(json_content)
+    return(json_length)
+  }
 
-  file_extra_status <- extra_file_val[file_spec == "ext"]
-  expect_equal(
-    sum(file_extra_status$validation_status == "info"),
-    nrow(file_extra_status)
-  )
-  expect_equal(
-    sum(file_extra_status$validation_details == "undocumented_file"),
-    nrow(file_extra_status)
-  )
+  suppressWarnings({
+    pretty_jsons <- vapply(pretty_results, json_as_character_length, integer(1))
+    non_pretty_jsons <- vapply(
+      non_pretty_results,
+      json_as_character_length,
+      integer(1)
+    )
+  })
 
-  # info: missing_opt_field
+  expect_true(all(pretty_jsons > 1))
+  expect_true(all(non_pretty_jsons == 1))
 
-  field_info_status <- full_val[
-    file_spec == "req" & file_provided_status == TRUE & field_provided_status == FALSE & field_spec == "opt"
-  ]
-  expect_equal(
-    sum(field_info_status$validation_status == "info"),
-    nrow(field_info_status)
-  )
-  expect_equal(
-    sum(field_info_status$validation_details == "missing_opt_field"),
-    nrow(field_info_status)
-  )
+  # their content should be identical though
 
-  # problem: missing_req_field
+  if (requireNamespace("jsonlite", quietly = TRUE)) {
+    pretty_jsons_parsed <- lapply(pretty_results, get_result_json)
+    non_pretty_jsons_parsed <- lapply(non_pretty_results, get_result_json)
 
-  field_problem_status <- missing_req_field_val[
-    file_provided_status == TRUE & field_spec == "req" & field_provided_status == FALSE
-  ]
-  expect_equal(
-    sum(field_problem_status$validation_status == "problem"),
-    nrow(field_problem_status)
-  )
-  expect_equal(
-    sum(field_problem_status$validation_details == "missing_req_field"),
-    nrow(field_problem_status)
-  )
-
-  # info: undocumented_field
-
-  field_extra_status <- extra_field_val[
-    file_spec != "ext" & field_spec == "ext"
-  ]
-  expect_equal(
-    sum(field_extra_status$validation_status == "info"),
-    nrow(field_extra_status)
-  )
-  expect_equal(
-    sum(field_extra_status$validation_details == "undocumented_field"),
-    nrow(field_extra_status)
-  )
-
+    expect_identical(pretty_jsons_parsed, non_pretty_jsons_parsed)
+  }
 })
 
-test_that("handles 'calendar' absence and 'translations' presence adequately", {
+test_that("quiet arg works correctly", {
+  expect_silent(tester(gtfs, quiet = TRUE, html_preview = FALSE))
+  expect_silent(tester(data_path, quiet = TRUE, html_preview = FALSE))
+  expect_silent(tester(gtfs_url, quiet = TRUE, html_preview = FALSE))
+  expect_silent(tester(gtfs_dir, quiet = TRUE, html_preview = FALSE))
 
-  # check first that calendar is required and calendar_dates is optional
-
-  expect_equal(
-    sum(full_val[file == "calendar"]$file_spec == "req"),
-    nrow(full_val[file == "calendar"])
+  expect_message(tester(gtfs, quiet = FALSE, html_preview = FALSE))
+  expect_message(tester(data_path, quiet = FALSE, html_preview = FALSE))
+  capture.output(
+    expect_message(tester(gtfs_url, quiet = FALSE, html_preview = FALSE)),
+    type = "message"
   )
-
-  expect_equal(
-    sum(full_val[file == "calendar_dates"]$file_spec == "opt"),
-    nrow(full_val[file == "calendar_dates"])
-  )
-
-  # remove calendar and check that calendar is now optional and calendar_dates
-  # required
-
-  no_calendar_gtfs <- gtfs
-  no_calendar_gtfs$calendar <- NULL
-  no_calendar_gtfs <- validate_gtfs(no_calendar_gtfs, warnings = FALSE)
-  no_calendar_val <- attr(no_calendar_gtfs, "validation_result")
-
-  expect_equal(
-    sum(no_calendar_val[file == "calendar"]$file_spec == "opt"),
-    nrow(no_calendar_val[file == "calendar"])
-  )
-
-  expect_equal(
-    sum(no_calendar_val[file == "calendar_dates"]$file_spec == "req"),
-    nrow(no_calendar_val[file == "calendar_dates"])
-  )
-
-  # check that feed_info is optional
-
-  expect_equal(
-    sum(full_val[file == "feed_info"]$file_spec == "opt"),
-    nrow(full_val[file == "feed_info"])
-  )
-
-  # adds empty translations and check that feed_info becomes required
-
-  translations_gtfs <- gtfs
-  translations_gtfs$translations <- data.table::data.table(NULL)
-  translations_gtfs <- validate_gtfs(translations_gtfs, warnings = FALSE)
-  translations_val <- attr(translations_gtfs, "validation_result")
-
-  expect_equal(
-    sum(translations_val[file == "feed_info"]$file_spec == "req"),
-    nrow(translations_val[file == "feed_info"])
-  )
-
+  expect_message(tester(gtfs_dir, quiet = FALSE, html_preview = FALSE))
 })
 
-test_that("it is deprecated", {
-  expect_warning(validate_gtfs(gtfs))
+test_that("n_threads arg works correctly", {
+  get_used_threads <- function(result, version) {
+    relevant_file <- file.path(result, "validation_stderr.txt")
+
+    running_info <- readLines(relevant_file)
+    thread_info <- running_info[grepl("thread", running_info)]
+
+    info_pos <- regexpr("\\d", thread_info)
+    n_threads <- as.integer(substring(thread_info, info_pos, info_pos))
+
+    return(n_threads)
+  }
+
+  for (version in available_versions) {
+    validator_path <- download_validator(tempdir(), version = version)
+    result <- tester(
+      validator_path = validator_path,
+      n_threads = 1,
+      html_preview = FALSE
+    )
+    expect_equal(get_used_threads(result), 1)
+  }
+
+  for (version in available_versions) {
+    validator_path <- download_validator(tempdir(), version = version)
+    result <- tester(
+      validator_path = validator_path,
+      n_threads = 2,
+      html_preview = FALSE
+    )
+    expect_equal(get_used_threads(result), 2)
+  }
 })

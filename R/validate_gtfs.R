@@ -1,274 +1,252 @@
-#' Validate GTFS file
+#' Validate GTFS feed
 #'
-#' @description
+#' Uses MobilityData's [GTFS
+#' validator](https://github.com/MobilityData/gtfs-validator) to perform a GTFS
+#' business rule validation. The results are available as an HTML report (if
+#' validator v3.1.0 or higher is used) and in JSON format. Please check the
+#' complete set of rules used in the validation
+#' [here](https://github.com/MobilityData/gtfs-validator/blob/master/RULES.md).
+#' Please note that this function requires a working installation of Java 11 or
+#' higher to work.
 #'
-#' Validates the GTFS object against GTFS specifications and raises warnings if
-#' required files/fields are not found.
+#' @param gtfs The GTFS to be validated. Can be in the format of a GTFS object,
+#'   of a path to a GTFS file, of a path to a directory or an URL to a feed.
+#' @param output_path A string. The path to the directory that the validator
+#'   will create and in which the results will be saved to.
+#' @param validator_path A string. The path to the GTFS validator, previously
+#'   downloaded with [download_validator()].
+#' @param overwrite A logical. Whether to overwrite existing validation results
+#'   in `output_path`. Defaults to `TRUE`.
+#' @param html_preview A logical. Whether to show HTML report in a viewer, such
+#'   as RStudio or a browser. Defaults to `TRUE` (only works on interactive
+#'   sessions).
+#' @param pretty_json A logical. Whether JSON results should be printed in a
+#'   readable way, that allows it to be inspected without manually formatting.
+#'   Defaults to `FALSE`.
+#' @param quiet A logical. Whether to hide informative messages. Defaults to
+#'   `TRUE`.
+#' @param n_threads An integer between 1 and the number of cores in the running
+#'   machine. Control how many threads are used during the validation. Defaults
+#'   to using all but one of the available cores.
 #'
-#' Important note: this function is considered deprecated. Use it with caution,
-#' and note that its usage and output may heavily change in future versions of
-#' `gtfstools`.
+#' @return Invisibly returns the normalized path to the directory where the
+#'   validation results were saved to.
 #'
-#' @template gtfs
-#' @param files A character vector containing the text files to be validated
-#'   against the GTFS specification (without the \code{.txt} extension). If
-#'   \code{NULL} (the default) the provided GTFS is validated against all
-#'   possible GTFS text files.
-#' @param quiet Whether to hide log messages (defaults to TRUE).
-#' @param warnings Whether to display warning messages (defaults to TRUE).
+#' @family validation
 #'
-#' @return A GTFS object with a \code{validation_result} attribute. This
-#'   attribute is a \code{data.table} containing the validation summary of all
-#'   possible fields from the specified files.
-#'
-#' @section Details:
-#' GTFS object's files and fields are validated against the GTFS specifications
-#' as documented in \href{https://developers.google.com/transit/gtfs/reference}{
-#' Google's Static GTFS Reference}:
-#' \itemize{
-#'   \item GTFS feeds are considered valid if they include all required files
-#'     and fields. If a required file/field is missing the function (optionally)
-#'     raises a warning.
-#'   \item Optional files/fields are listed in the reference above but are not
-#'     required, thus no warning is raised if they are missing.
-#'   \item Extra files/fields are those who are not listed in the reference
-#'     above (either because they refer to a specific GTFS extension or due to
-#'     any other reason).
-#' }
-#' Note that some files (\code{calendar.txt}, \code{calendar_dates.txt} and
-#' \code{feed_info.txt}) are conditionally required. This means that:
-#' \itemize{
-#'   \item \code{calendar.txt} is initially set as a required file. If it's not
-#'     present, however, it becomes optional and \code{calendar_dates.txt}
-#'     (originally set as optional) becomes required.
-#'   \item \code{feed_info.txt} is initially set as an optional file. If
-#'     \code{translations.txt} is present, however, it becomes required.
-#' }
-#'
-#' @examples
+#' @examplesIf identical(tolower(Sys.getenv("NOT_CRAN")), "true")
 #' data_path <- system.file("extdata/spo_gtfs.zip", package = "gtfstools")
-#'
+#' output_path <- tempfile("validation_result")
+#' validator_path <- download_validator(tempdir())
 #' gtfs <- read_gtfs(data_path)
-#' attr(gtfs, "validation_result")
 #'
-#' # should not raise a warning, because 'shapes' is not a required file
-#' gtfs$shapes <- NULL
-#' validation_result <- validate_gtfs(gtfs)
+#' validate_gtfs(gtfs, output_path, validator_path)
+#' list.files(output_path)
 #'
-#' # should raise a warning, because 'stop_times' is a required file
-#' gtfs$stop_times <- NULL
-#' validation_result <- validate_gtfs(gtfs)
+#' # works with feeds saved to disk
+#' new_output_path <- tempfile("new_validation_result")
+#' validate_gtfs(data_path, new_output_path, validator_path)
+#' list.files(new_output_path)
+#'
+#' # and with feeds pointed by an url
+#' newer_output_path <- tempfile("newer_validation_result")
+#' gtfs_url <- "https://github.com/ipeaGIT/gtfstools/raw/master/inst/extdata/spo_gtfs.zip"
+#' validate_gtfs(gtfs_url, newer_output_path, validator_path)
+#' list.files(newer_output_path)
 #'
 #' @export
-validate_gtfs <- function(gtfs, files = NULL, quiet = TRUE, warnings = TRUE) {
-
-  .Deprecated(
-    msg = paste0(
-      "'validate_gtfs()' is deprecated. ",
-      "Its usage and output will probably change on future gtfstools versions."
-    )
+validate_gtfs <- function(gtfs,
+                          output_path,
+                          validator_path,
+                          overwrite = TRUE,
+                          html_preview = TRUE,
+                          pretty_json = FALSE,
+                          quiet = TRUE,
+                          n_threads = parallel::detectCores() - 1) {
+  assert_java_version()
+  checkmate::assert(
+    checkmate::check_string(output_path),
+    checkmate::check_path_for_output(output_path, overwrite = TRUE),
+    combine = "and"
   )
+  checkmate::assert(
+    checkmate::check_string(validator_path),
+    checkmate::check_file_exists(validator_path),
+    combine = "and"
+  )
+  checkmate::assert_logical(overwrite, any.missing = FALSE, len = 1)
+  checkmate::assert_logical(html_preview, any.missing = FALSE, len = 1)
+  checkmate::assert_logical(pretty_json, any.missing = FALSE, len = 1)
+  checkmate::assert_logical(quiet, any.missing = FALSE, len = 1)
+  checkmate::assert_number(
+    n_threads,
+    lower = 1,
+    upper = parallel::detectCores(),
+    finite = TRUE
+  )
+  assert_overwritten_files(output_path, overwrite)
 
-  # input checking
+  gtfs <- assert_and_assign_gtfs(gtfs, quiet)
+  validator_version <- parse_validator_version(validator_path)
 
-  checkmate::assert_class(gtfs, "dt_gtfs")
-  checkmate::assert_logical(quiet)
-  checkmate::assert_logical(warnings)
-  checkmate::assert_character(files, null.ok = TRUE)
+  pretty_json_flag <- ""
+  if (pretty_json) pretty_json_flag <- "-p"
 
-  # if any files have been specified in read_gtfs, only validate those
-  # uses internal data gtfs_metadata - check data-raw/gtfs_metadata.R
+  command_flags <- c(
+    "-jar", validator_path,
+    "-i", gtfs,
+    "-o", output_path,
+    "-t", n_threads,
+    pretty_json_flag
+  )
+  if (!quiet) {
+    message(
+      "Validator invoked with call:\njava ",
+      paste(command_flags, collapse = " ")
+    )
+  }
+  call_output <- processx::run("java", command_flags)
 
-  if (is.null(files)) {
-
-    specified_files <- names(gtfs_metadata)
-    extra_files <- setdiff(paste0(names(gtfs), ".txt"), names(gtfs_metadata))
-    files_to_validate <- c(specified_files, extra_files)
-
-  } else {
-
-    checkmate::assert_names(files, subset.of = names(gtfs))
-
-    files_to_validate <- paste0(files, ".txt")
-
+  if (call_output$stdout != "") {
+    writeLines(
+      call_output$stdout,
+      con = file.path(output_path, "validation_stdout.txt")
+    )
   }
 
-  # build validation dt for each file
+  if (call_output$stderr != "") {
+    writeLines(
+      call_output$stderr,
+      con = file.path(output_path, "validation_stderr.txt")
+    )
+  }
 
-  validation_result <- lapply(files_to_validate, function(filename) {
+  if (
+    interactive() &&
+      html_preview &&
+      validator_version >= numeric_version("3.1.0")
+  ) {
+    html_path <- file.path(output_path, "report.html")
+    utils::browseURL(html_path)
+  }
 
-    file_metadata <- gtfs_metadata[[filename]]
-    file          <- sub(".txt", "", filename)
+  return(invisible(normalizePath(output_path)))
+}
 
-    # if metadata is null then file is undocumented.
-    # validate it as an "extra" file
+parse_validator_version <- function(validator_path) {
+  version_region <- regexpr("\\d+\\.\\d+\\.\\d+\\.jar$", validator_path)
 
-    if (is.null(file_metadata)) {
+  if (version_region == -1) {
+    stop(
+      "Assertion on 'validator_path' failed: Could not parse validator ",
+      "version. Please make sure that the path is in the format ",
+      "gtfs-validator-vX.Y.Z.jar"
+    )
+  }
 
-      file_provided_status  <- TRUE
-      file_spec             <- "ext"
-      field                 <- names(gtfs[[file]])
-      field_spec            <- "ext"
-      field_provided_status <- TRUE
+  version <- substring(
+    validator_path,
+    version_region,
+    nchar(validator_path) - 4
+  )
+  version <- numeric_version(version)
 
-    } else {
+  return(version)
+}
 
-      # undocumented fields are labeled as "extra" fields
-
-      provided_fields   <- names(gtfs[[file]])
-      documented_fields <- file_metadata$field
-
-      file_provided_status  <- file %in% names(gtfs)
-      file_spec             <- file_metadata$file_spec
-      field                 <- c(
-        documented_fields,
-        setdiff(provided_fields, documented_fields)
+assert_and_assign_gtfs <- function(gtfs, quiet) {
+  if (inherits(gtfs, "dt_gtfs")) {
+    gtfs_path <- tempfile("gtfs", fileext = ".zip")
+    write_gtfs(gtfs, gtfs_path, quiet = quiet)
+    gtfs <- gtfs_path
+  } else {
+    if (!checkmate::test_string(gtfs)) {
+      stop(
+        "Assertion on 'gtfs' failed: Must either be a GTFS object (with ",
+        "dt_gtfs class), a path to a local GTFS file, a path to a local ",
+        "directory or an URL to a feed."
       )
-      field_spec            <- ifelse(
-        field %in% documented_fields,
-        file_metadata$field_spec[field],
-        "ext"
-      )
-      field_provided_status <- field %in% names(gtfs[[file]])
-
     }
 
-    data.table::data.table(
-      file,
-      file_spec,
-      file_provided_status,
-      field,
-      field_spec,
-      field_provided_status
-    )
+    is_url <- grepl("^http[s]?\\:\\/\\/\\.*", gtfs)
+    if (is_url) {
+      tmpfile <- tempfile("gtfs", fileext = ".zip")
+      if (!quiet) message("Downloading ", gtfs, " to ", tmpfile, ".")
+      curl::curl_download(gtfs, tmpfile, quiet = quiet)
+      gtfs <- tmpfile
+    }
 
-  })
+    if (file.exists(gtfs)) {
+      if (!dir.exists(gtfs)) {
+        ziplist <- tryCatch(zip::zip_list(gtfs), error = function(cnd) cnd)
+        is_zip <- !inherits(ziplist, "error")
 
-  validation_result <- data.table::rbindlist(validation_result)
-
-  # checks if calendar.txt is missing. if it is then it becomes optional and
-  # calendar_dates.txt becomes required
-
-  if (! "calendar" %in% names(gtfs)) {
-
-    validation_result[file == "calendar", file_spec := "opt"]
-    validation_result[file == "calendar_dates", file_spec := "req"]
-
+        if (!is_zip) {
+          element <- ifelse(is_url, " URL ", " path ")
+          stop(
+            "Assertion on 'gtfs' failed: The provided",
+            element,
+            "doesn't seem to point to a GTFS file."
+          )
+        }
+      }
+    } else {
+      stop("Assertion on 'gtfs' failed: File does not exist.")
+    }
   }
-
-  # checks if translations.txt is provided.
-  # if it is, feed_info.txt becomes required
-
-  if ("translations" %in% names(gtfs)) {
-    validation_result[file == "feed_info", file_spec := "req"]
-  }
-
-  # checks for validation status and details
-
-  validation_result[
-    ,
-    `:=`(validation_status = "ok", validation_details = NA_character_)
-  ]
-
-  # if file is not provided and is required, mark as a problem
-
-  validation_result[
-    !file_provided_status & file_spec == "req",
-    `:=`(validation_status = "problem", validation_details = "missing_req_file")
-  ]
-
-  # if file is not provided and is optional, mark as a info
-
-  validation_result[
-    !file_provided_status & file_spec == "opt",
-    `:=`(validation_status = "info", validation_details = "missing_opt_file")
-  ]
-
-  # if file is provided but misses a required field, mark as a problem
-
-  validation_result[
-    file_provided_status & !field_provided_status & field_spec == "req",
-    `:=`(
-      validation_status = "problem",
-      validation_details = "missing_req_field"
-    )
-  ]
-
-  # if file is provided but misses a optional field, mark as a info
-
-  validation_result[
-    file_provided_status & !field_provided_status & field_spec == "opt",
-    `:=`(validation_status = "info", validation_details = "missing_opt_field")
-  ]
-
-  # if file is provided but undocumented in gtfs specifications, mark as a info
-
-  validation_result[
-    file_spec == "ext",
-    `:=`(validation_status = "info", validation_details = "undocumented_file")
-  ]
-
-  # if field is provided but undocumented in gtfs specifications, mark as a info
-
-  validation_result[
-    file_spec != "ext" & field_spec == "ext",
-    `:=`(validation_status = "info", validation_details = "undocumented_field")
-  ]
-
-  # raises warnings if problems are found
-
-  files_problems <- validation_result[validation_details == "missing_req_file"]
-
-  if (nrow(files_problems) >= 1 & warnings) {
-
-    warning(
-      paste0(
-        "Invalid feed. Missing required file(s): ",
-        paste0("'", unique(files_problems$file), "'", collapse = ", ")
-      )
-    )
-
-  }
-
-  fields_problems <- validation_result[
-    validation_details == "missing_req_field"
-  ]
-
-  if (nrow(fields_problems) >= 1 & warnings) {
-
-    problematic_files <- unique(fields_problems$file)
-
-    problematic_fields <- unlist(
-      lapply(
-        problematic_files,
-        function(i)
-          paste0("'", fields_problems[file == i]$field, "'", collapse = ", ")
-      )
-    )
-
-    warning(
-      paste0(
-        "Invalid feed.\n",
-        paste0(
-          "  Missing required field(s) in '",
-          problematic_files,
-          "': ",
-          problematic_fields,
-          collapse = "\n"
-        )
-      )
-    )
-
-  }
-
-  if (nrow(files_problems) == 0 & nrow(fields_problems) == 0 & !quiet) {
-    message("Valid gtfs data structure.")
-  }
-
-  # attach validation_result as an attribute of the given gtfs
-
-  attr(gtfs, "validation_result") <- validation_result
 
   return(gtfs)
+}
 
+assert_java_version <- function() {
+  informative_message <- paste0(
+    "Please install Java version 11 or higher to run the validator.\n",
+    "You can download Java 11 from https://jdk.java.net/java-se-ri/11."
+  )
+  java_version_output <- tryCatch(
+    processx::run("java", "-version"),
+    error = function(cnd) cnd
+  )
+
+  if (inherits(java_version_output, "error")) {
+    stop("Could not find Java on the system path. ", informative_message)
+  }
+
+  full_java_version <- strsplit(java_version_output$stderr, "\"")[[1]][2]
+  java_version <- strsplit(full_java_version, "_")[[1]][1]
+  java_version <- numeric_version(java_version)
+
+  if (java_version < numeric_version("11.0.0")) {
+    stop(
+      "You seem to have Java version ", full_java_version, " installed. ",
+      informative_message
+    )
+  }
+
+  return(invisible(TRUE))
+}
+
+assert_overwritten_files <- function(output_path, overwrite) {
+  if (dir.exists(output_path)) {
+    checkmate::assert_path_for_output(
+      file.path(output_path, "report.html"),
+      overwrite = overwrite
+    )
+    checkmate::assert_path_for_output(
+      file.path(output_path, "report.json"),
+      overwrite = overwrite
+    )
+    checkmate::assert_path_for_output(
+      file.path(output_path, "system_errors.json"),
+      overwrite = overwrite
+    )
+    checkmate::assert_path_for_output(
+      file.path(output_path, "validation_stdout.txt"),
+      overwrite = overwrite
+    )
+    checkmate::assert_path_for_output(
+      file.path(output_path, "validation_stderr.txt"),
+      overwrite = overwrite
+    )
+  }
 }

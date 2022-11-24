@@ -2,73 +2,84 @@
 % Please edit documentation in R/validate_gtfs.R
 \name{validate_gtfs}
 \alias{validate_gtfs}
-\title{Validate GTFS file}
+\title{Validate GTFS feed}
 \usage{
-validate_gtfs(gtfs, files = NULL, quiet = TRUE, warnings = TRUE)
+validate_gtfs(
+  gtfs,
+  output_path,
+  validator_path,
+  overwrite = TRUE,
+  html_preview = TRUE,
+  pretty_json = FALSE,
+  quiet = TRUE,
+  n_threads = parallel::detectCores() - 1
+)
 }
 \arguments{
-\item{gtfs}{A GTFS object, as created by \code{\link[=read_gtfs]{read_gtfs()}}.}
+\item{gtfs}{The GTFS to be validated. Can be in the format of a GTFS object,
+of a path to a GTFS file, of a path to a directory or an URL to a feed.}
 
-\item{files}{A character vector containing the text files to be validated
-against the GTFS specification (without the \code{.txt} extension). If
-\code{NULL} (the default) the provided GTFS is validated against all
-possible GTFS text files.}
+\item{output_path}{A string. The path to the directory that the validator
+will create and in which the results will be saved to.}
 
-\item{quiet}{Whether to hide log messages (defaults to TRUE).}
+\item{validator_path}{A string. The path to the GTFS validator, previously
+downloaded with \code{\link[=download_validator]{download_validator()}}.}
 
-\item{warnings}{Whether to display warning messages (defaults to TRUE).}
+\item{overwrite}{A logical. Whether to overwrite existing validation results
+in \code{output_path}. Defaults to \code{TRUE}.}
+
+\item{html_preview}{A logical. Whether to show HTML report in a viewer, such
+as RStudio or a browser. Defaults to \code{TRUE} (only works on interactive
+sessions).}
+
+\item{pretty_json}{A logical. Whether JSON results should be printed in a
+readable way, that allows it to be inspected without manually formatting.
+Defaults to \code{FALSE}.}
+
+\item{quiet}{A logical. Whether to hide informative messages. Defaults to
+\code{TRUE}.}
+
+\item{n_threads}{An integer between 1 and the number of cores in the running
+machine. Control how many threads are used during the validation. Defaults
+to using all but one of the available cores.}
 }
 \value{
-A GTFS object with a \code{validation_result} attribute. This
-attribute is a \code{data.table} containing the validation summary of all
-possible fields from the specified files.
+Invisibly returns the normalized path to the directory where the
+validation results were saved to.
 }
 \description{
-Validates the GTFS object against GTFS specifications and raises warnings if
-required files/fields are not found.
-
-Important note: this function is considered deprecated. Use it with caution,
-and note that its usage and output may heavily change in future versions of
-\code{gtfstools}.
+Uses MobilityData's \href{https://github.com/MobilityData/gtfs-validator}{GTFS validator} to perform a GTFS
+business rule validation. The results are available as an HTML report (if
+validator v3.1.0 or higher is used) and in JSON format. Please check the
+complete set of rules used in the validation
+\href{https://github.com/MobilityData/gtfs-validator/blob/master/RULES.md}{here}.
+Please note that this function requires a working installation of Java 11 or
+higher to work.
 }
-\section{Details}{
-
-GTFS object's files and fields are validated against the GTFS specifications
-as documented in \href{https://developers.google.com/transit/gtfs/reference}{
-Google's Static GTFS Reference}:
-\itemize{
-\item GTFS feeds are considered valid if they include all required files
-and fields. If a required file/field is missing the function (optionally)
-raises a warning.
-\item Optional files/fields are listed in the reference above but are not
-required, thus no warning is raised if they are missing.
-\item Extra files/fields are those who are not listed in the reference
-above (either because they refer to a specific GTFS extension or due to
-any other reason).
-}
-Note that some files (\code{calendar.txt}, \code{calendar_dates.txt} and
-\code{feed_info.txt}) are conditionally required. This means that:
-\itemize{
-\item \code{calendar.txt} is initially set as a required file. If it's not
-present, however, it becomes optional and \code{calendar_dates.txt}
-(originally set as optional) becomes required.
-\item \code{feed_info.txt} is initially set as an optional file. If
-\code{translations.txt} is present, however, it becomes required.
-}
-}
-
 \examples{
+\dontshow{if (identical(tolower(Sys.getenv("NOT_CRAN")), "true")) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
 data_path <- system.file("extdata/spo_gtfs.zip", package = "gtfstools")
-
+output_path <- tempfile("validation_result")
+validator_path <- download_validator(tempdir())
 gtfs <- read_gtfs(data_path)
-attr(gtfs, "validation_result")
 
-# should not raise a warning, because 'shapes' is not a required file
-gtfs$shapes <- NULL
-validation_result <- validate_gtfs(gtfs)
+validate_gtfs(gtfs, output_path, validator_path)
+list.files(output_path)
 
-# should raise a warning, because 'stop_times' is a required file
-gtfs$stop_times <- NULL
-validation_result <- validate_gtfs(gtfs)
+# works with feeds saved to disk
+new_output_path <- tempfile("new_validation_result")
+validate_gtfs(data_path, new_output_path, validator_path)
+list.files(new_output_path)
 
+# and with feeds pointed by an url
+newer_output_path <- tempfile("newer_validation_result")
+gtfs_url <- "https://github.com/ipeaGIT/gtfstools/raw/master/inst/extdata/spo_gtfs.zip"
+validate_gtfs(gtfs_url, newer_output_path, validator_path)
+list.files(newer_output_path)
+\dontshow{\}) # examplesIf}
 }
+\seealso{
+Other validation: 
+\code{\link{download_validator}()}
+}
+\concept{validation}

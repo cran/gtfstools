@@ -2,7 +2,7 @@ Type: Package
 Package: gtfstools
 Title: General Transit Feed Specification (GTFS) Editing and Analysing
         Tools
-Version: 1.1.0
+Version: 1.2.0
 Authors@R: 
     c(person(given = "Daniel",
              family = "Herszenhut",
@@ -38,15 +38,15 @@ URL: https://ipeagit.github.io/gtfstools/,
         https://github.com/ipeaGIT/gtfstools
 BugReports: https://github.com/ipeaGIT/gtfstools/issues
 Depends: R (>= 2.10)
-Imports: checkmate, data.table, gtfsio (>= 1.0.0), sf, sfheaders,
-        units, utils
-Suggests: covr, ggplot2, knitr, rmarkdown, testthat, zip
+Imports: checkmate, curl, data.table, gtfsio (>= 1.0.0), processx, sf,
+        sfheaders, units, utils, zip
+Suggests: covr, ggplot2, jsonlite, knitr, rmarkdown, testthat,
 LinkingTo: cpp11
 VignetteBuilder: knitr
 Encoding: UTF-8
 NeedsCompilation: yes
-RoxygenNote: 7.2.0
-Packaged: 2022-05-24 16:39:19 UTC; dhersz
+RoxygenNote: 7.2.1
+Packaged: 2022-11-24 12:47:53 UTC; dhersz
 Author: Daniel Herszenhut [aut, cre] (<https://orcid.org/0000-0001-8066-1105>),
   Rafael H. M. Pereira [aut] (<https://orcid.org/0000-0003-2125-7465>),
   Pedro R. Andrade [aut] (<https://orcid.org/0000-0001-8675-4046>),
@@ -56,4 +56,4 @@ Author: Daniel Herszenhut [aut, cre] (<https://orcid.org/0000-0001-8066-1105>),
   Ipea - Institute for Applied Economic Research [cph, fnd]
 Maintainer: Daniel Herszenhut <dhersz@gmail.com>
 Repository: CRAN
-Date/Publication: 2022-05-24 23:50:02 UTC
+Date/Publication: 2022-11-24 13:10:05 UTC

@@ -3,8 +3,9 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
+library(gtfstools)
 
-## ---- message = FALSE---------------------------------------------------------
+## ---- message = FALSE, eval = requireNamespace("ggplot2", quietly = TRUE)-----
 library(gtfstools)
 library(ggplot2)
 
@@ -132,20 +133,20 @@ plotter <- function(gtfs,
     geom_sf(data = geom, fill = NA)
 }
 
-## -----------------------------------------------------------------------------
+## ---- eval = requireNamespace("ggplot2", quietly = TRUE)----------------------
 bbox <- sf::st_bbox(convert_shapes_to_sf(gtfs, shape_id = "68962"))
 
 plotter(gtfs, bbox, do_filter = FALSE)
 
-## -----------------------------------------------------------------------------
+## ---- eval = requireNamespace("ggplot2", quietly = TRUE)----------------------
 plotter(gtfs, bbox)
 
-## -----------------------------------------------------------------------------
+## ---- eval = requireNamespace("ggplot2", quietly = TRUE)----------------------
 plotter(gtfs, bbox, keep = FALSE)
 
-## -----------------------------------------------------------------------------
+## ---- eval = requireNamespace("ggplot2", quietly = TRUE)----------------------
 plotter(gtfs, bbox, spatial_operation = sf::st_contains)
 
-## -----------------------------------------------------------------------------
+## ---- eval = requireNamespace("ggplot2", quietly = TRUE)----------------------
 plotter(gtfs, bbox, spatial_operation = sf::st_contains, keep = FALSE)
 
