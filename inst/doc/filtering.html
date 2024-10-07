@@ -14,89 +14,103 @@
 
 <title>Filtering GTFS feeds</title>
 
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
 
 <style type="text/css">
-  code{white-space: pre-wrap;}
-  span.smallcaps{font-variant: small-caps;}
-  span.underline{text-decoration: underline;}
-  div.column{display: inline-block; vertical-align: top; width: 50%;}
-  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
-  ul.task-list{list-style: none;}
-    </style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
 
 
 
 <style type="text/css">
-  code {
-    white-space: pre;
-  }
-  .sourceCode {
-    overflow: visible;
-  }
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
 </style>
 <style type="text/css" data-origin="pandoc">
-a.sourceLine { display: inline-block; line-height: 1.25; }
-a.sourceLine { pointer-events: none; color: inherit; text-decoration: inherit; }
-a.sourceLine:empty { height: 1.2em; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
-code.sourceCode { white-space: pre; position: relative; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
 div.sourceCode { margin: 1em 0; }
 pre.sourceCode { margin: 0; }
 @media screen {
 div.sourceCode { overflow: auto; }
 }
 @media print {
-code.sourceCode { white-space: pre-wrap; }
-a.sourceLine { text-indent: -1em; padding-left: 1em; }
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
 }
-pre.numberSource a.sourceLine
-  { position: relative; left: -4em; }
-pre.numberSource a.sourceLine::before
-  { content: attr(title);
-    position: relative; left: -1em; text-align: right; vertical-align: baseline;
-    border: none; pointer-events: all; display: inline-block;
-    -webkit-touch-callout: none; -webkit-user-select: none;
-    -khtml-user-select: none; -moz-user-select: none;
-    -ms-user-select: none; user-select: none;
-    padding: 0 4px; width: 4em;
-    color: #aaaaaa;
-  }
-pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
 div.sourceCode
-  {  }
+{ }
 @media screen {
-a.sourceLine::before { text-decoration: underline; }
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
-code span.al { color: #ff0000; font-weight: bold; } /* Alert */
-code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
-code span.at { color: #7d9029; } /* Attribute */
-code span.bn { color: #40a070; } /* BaseN */
-code span.bu { } /* BuiltIn */
-code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
-code span.ch { color: #4070a0; } /* Char */
-code span.cn { color: #880000; } /* Constant */
-code span.co { color: #60a0b0; font-style: italic; } /* Comment */
-code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
-code span.do { color: #ba2121; font-style: italic; } /* Documentation */
-code span.dt { color: #902000; } /* DataType */
-code span.dv { color: #40a070; } /* DecVal */
-code span.er { color: #ff0000; font-weight: bold; } /* Error */
-code span.ex { } /* Extension */
-code span.fl { color: #40a070; } /* Float */
-code span.fu { color: #06287e; } /* Function */
-code span.im { } /* Import */
-code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
-code span.kw { color: #007020; font-weight: bold; } /* Keyword */
-code span.op { color: #666666; } /* Operator */
-code span.ot { color: #007020; } /* Other */
-code span.pp { color: #bc7a00; } /* Preprocessor */
-code span.sc { color: #4070a0; } /* SpecialChar */
-code span.ss { color: #bb6688; } /* SpecialString */
-code span.st { color: #4070a0; } /* String */
-code span.va { color: #19177c; } /* Variable */
-code span.vs { color: #4070a0; } /* VerbatimString */
-code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
-
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
 </style>
 <script>
 // apply pandoc div.sourceCode style to pre.sourceCode instead
@@ -105,13 +119,20 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
   for (var i = 0; i < sheets.length; i++) {
     if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
     try { var rules = sheets[i].cssRules; } catch (e) { continue; }
-    for (var j = 0; j < rules.length; j++) {
+    var j = 0;
+    while (j < rules.length) {
       var rule = rules[j];
       // check if there is a div.sourceCode rule
-      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
       var style = rule.style.cssText;
       // check if color or background-color is set
-      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
       // replace div.sourceCode by a pre.sourceCode rule
       sheets[i].deleteRule(j);
       sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
@@ -319,8 +340,13 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 
 
-<p>GTFS feeds are often used to describe very large and complex public transport networks. These large files can become quite cumbersome to use, manipulate and move around, and it’s not unfrequent that one wants to analyze a specific subset of the data.</p>
-<p><strong>gtfstools</strong> includes a few functions to filter GTFS feeds, thus allowing for faster and more convenient data processing. The filtering functions currently available are:</p>
+<p>GTFS feeds are often used to describe very large and complex public
+transport networks. These large files can become quite cumbersome to
+use, manipulate and move around, and it’s not unfrequent that one wants
+to analyze a specific subset of the data.</p>
+<p><strong>gtfstools</strong> includes a few functions to filter GTFS
+feeds, thus allowing for faster and more convenient data processing. The
+filtering functions currently available are:</p>
 <ul>
 <li><code>filter_by_agency_id()</code></li>
 <li><code>filter_by_route_id()</code></li>
@@ -333,252 +359,359 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <li><code>filter_by_time_of_day()</code></li>
 <li><code>filter_by_sf()</code></li>
 </ul>
-<p>This vignette will introduce you to these functions and will cover their usage in detail.</p>
-<p>We will start by loading the packages required by this demonstration into the current <strong>R</strong> session:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb1-1" title="1"><span class="kw">library</span>(gtfstools)</a>
-<a class="sourceLine" id="cb1-2" title="2"><span class="kw">library</span>(ggplot2)</a></code></pre></div>
+<p>This vignette will introduce you to these functions and will cover
+their usage in detail.</p>
+<p>We will start by loading the packages required by this demonstration
+into the current <strong>R</strong> session:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(gtfstools)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="co">#&gt; Warning: package &#39;ggplot2&#39; was built under R version 4.2.3</span></span></code></pre></div>
 <div id="filtering-by-agency_id-route_id-service_id-shape_id-stop_id-trip_id-or-route_type" class="section level1">
-<h1>Filtering by <code>agency_id</code>, <code>route_id</code>, <code>service_id</code>, <code>shape_id</code>, <code>stop_id</code>, <code>trip_id</code> or <code>route_type</code>:</h1>
-<p>The first six work in a very similar fashion. You specify a vector of identifiers, and the function keeps (or drops, as we’ll see soon) all the entries that are in any way related to this id. Let’s see how that works using <code>filter_by_trip_id()</code>:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb2-1" title="1">path &lt;-<span class="st"> </span><span class="kw">system.file</span>(<span class="st">&quot;extdata/spo_gtfs.zip&quot;</span>, <span class="dt">package =</span> <span class="st">&quot;gtfstools&quot;</span>)</a>
-<a class="sourceLine" id="cb2-2" title="2">gtfs &lt;-<span class="st"> </span><span class="kw">read_gtfs</span>(path)</a>
-<a class="sourceLine" id="cb2-3" title="3">utils<span class="op">::</span><span class="kw">object.size</span>(gtfs)</a>
-<a class="sourceLine" id="cb2-4" title="4"><span class="co">#&gt; 811304 bytes</span></a>
-<a class="sourceLine" id="cb2-5" title="5"></a>
-<a class="sourceLine" id="cb2-6" title="6"><span class="kw">head</span>(gtfs<span class="op">$</span>trips[, .(trip_id, trip_headsign, shape_id)])</a>
-<a class="sourceLine" id="cb2-7" title="7"><span class="co">#&gt;       trip_id trip_headsign shape_id</span></a>
-<a class="sourceLine" id="cb2-8" title="8"><span class="co">#&gt; 1: CPTM L07-0       JUNDIAI    17846</span></a>
-<a class="sourceLine" id="cb2-9" title="9"><span class="co">#&gt; 2: CPTM L07-1           LUZ    17847</span></a>
-<a class="sourceLine" id="cb2-10" title="10"><span class="co">#&gt; 3: CPTM L08-0  AMADOR BUENO    17848</span></a>
-<a class="sourceLine" id="cb2-11" title="11"><span class="co">#&gt; 4: CPTM L08-1 JULIO PRESTES    17849</span></a>
-<a class="sourceLine" id="cb2-12" title="12"><span class="co">#&gt; 5: CPTM L09-0        GRAJAU    17850</span></a>
-<a class="sourceLine" id="cb2-13" title="13"><span class="co">#&gt; 6: CPTM L09-1        OSASCO    17851</span></a>
-<a class="sourceLine" id="cb2-14" title="14"></a>
-<a class="sourceLine" id="cb2-15" title="15"><span class="co"># keeping trips CPTM L07-0 and CPTM L07-1</span></a>
-<a class="sourceLine" id="cb2-16" title="16">smaller_gtfs &lt;-<span class="st"> </span><span class="kw">filter_by_trip_id</span>(gtfs, <span class="kw">c</span>(<span class="st">&quot;CPTM L07-0&quot;</span>, <span class="st">&quot;CPTM L07-1&quot;</span>))</a>
-<a class="sourceLine" id="cb2-17" title="17">utils<span class="op">::</span><span class="kw">object.size</span>(smaller_gtfs)</a>
-<a class="sourceLine" id="cb2-18" title="18"><span class="co">#&gt; 71592 bytes</span></a>
-<a class="sourceLine" id="cb2-19" title="19"></a>
-<a class="sourceLine" id="cb2-20" title="20"><span class="kw">head</span>(smaller_gtfs<span class="op">$</span>trips[, .(trip_id, trip_headsign, shape_id)])</a>
-<a class="sourceLine" id="cb2-21" title="21"><span class="co">#&gt;       trip_id trip_headsign shape_id</span></a>
-<a class="sourceLine" id="cb2-22" title="22"><span class="co">#&gt; 1: CPTM L07-0       JUNDIAI    17846</span></a>
-<a class="sourceLine" id="cb2-23" title="23"><span class="co">#&gt; 2: CPTM L07-1           LUZ    17847</span></a>
-<a class="sourceLine" id="cb2-24" title="24"></a>
-<a class="sourceLine" id="cb2-25" title="25"><span class="kw">unique</span>(smaller_gtfs<span class="op">$</span>shapes<span class="op">$</span>shape_id)</a>
-<a class="sourceLine" id="cb2-26" title="26"><span class="co">#&gt; [1] &quot;17846&quot; &quot;17847&quot;</span></a></code></pre></div>
-<p>We can see from the code snippet above that the function not only filters the <code>trips</code> table, but all other tables that contain a key that can be identified via its relation to <code>trip_id</code>. For example, since the trips <code>CPTM L07-0</code> and <code>CPTM L07-1</code> are described by the shapes <code>17846</code> and <code>17847</code>, respectively, these are the only shapes kept in <code>smaller_gtfs</code>.</p>
-<p>The function also supports the opposite behaviour: instead of keeping the entries related to the specified identifiers, you can <em>drop</em> them. To do that, set the <code>keep</code> argument to <code>FALSE</code>:</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb3-1" title="1"><span class="co"># dropping trips CPTM L07-0 and CPTM L07-1</span></a>
-<a class="sourceLine" id="cb3-2" title="2">smaller_gtfs &lt;-<span class="st"> </span><span class="kw">filter_by_trip_id</span>(</a>
-<a class="sourceLine" id="cb3-3" title="3">    gtfs,</a>
-<a class="sourceLine" id="cb3-4" title="4">    <span class="kw">c</span>(<span class="st">&quot;CPTM L07-0&quot;</span>, <span class="st">&quot;CPTM L07-1&quot;</span>),</a>
-<a class="sourceLine" id="cb3-5" title="5">    <span class="dt">keep =</span> <span class="ot">FALSE</span></a>
-<a class="sourceLine" id="cb3-6" title="6">)</a>
-<a class="sourceLine" id="cb3-7" title="7">utils<span class="op">::</span><span class="kw">object.size</span>(smaller_gtfs)</a>
-<a class="sourceLine" id="cb3-8" title="8"><span class="co">#&gt; 762576 bytes</span></a>
-<a class="sourceLine" id="cb3-9" title="9"></a>
-<a class="sourceLine" id="cb3-10" title="10"><span class="kw">head</span>(smaller_gtfs<span class="op">$</span>trips[, .(trip_id, trip_headsign, shape_id)])</a>
-<a class="sourceLine" id="cb3-11" title="11"><span class="co">#&gt;       trip_id       trip_headsign shape_id</span></a>
-<a class="sourceLine" id="cb3-12" title="12"><span class="co">#&gt; 1: CPTM L08-0        AMADOR BUENO    17848</span></a>
-<a class="sourceLine" id="cb3-13" title="13"><span class="co">#&gt; 2: CPTM L08-1       JULIO PRESTES    17849</span></a>
-<a class="sourceLine" id="cb3-14" title="14"><span class="co">#&gt; 3: CPTM L09-0              GRAJAU    17850</span></a>
-<a class="sourceLine" id="cb3-15" title="15"><span class="co">#&gt; 4: CPTM L09-1              OSASCO    17851</span></a>
-<a class="sourceLine" id="cb3-16" title="16"><span class="co">#&gt; 5: CPTM L10-0 RIO GRANDE DA SERRA    17852</span></a>
-<a class="sourceLine" id="cb3-17" title="17"><span class="co">#&gt; 6: CPTM L10-1                BRÁS    17853</span></a>
-<a class="sourceLine" id="cb3-18" title="18"></a>
-<a class="sourceLine" id="cb3-19" title="19"><span class="kw">head</span>(<span class="kw">unique</span>(smaller_gtfs<span class="op">$</span>shapes<span class="op">$</span>shape_id))</a>
-<a class="sourceLine" id="cb3-20" title="20"><span class="co">#&gt; [1] &quot;17848&quot; &quot;17849&quot; &quot;17850&quot; &quot;17851&quot; &quot;17852&quot; &quot;17853&quot;</span></a></code></pre></div>
-<p>And the specified trips (and their respective shapes as well) are nowhere to be seen. Please note that, since we are keeping many more entries in the second case, the resulting GTFS object, though smaller than the original, is much larger than in the first case.</p>
-<p>The same logic demonstrated with <code>filter_by_trip_id()</code> applies to the functions that filter feeds by <code>agency_id</code>, <code>route_id</code>, <code>service_id</code>, <code>shape_id</code>, <code>stop_id</code> and <code>route_type</code>.</p>
+<h1>Filtering by <code>agency_id</code>, <code>route_id</code>,
+<code>service_id</code>, <code>shape_id</code>, <code>stop_id</code>,
+<code>trip_id</code> or <code>route_type</code>:</h1>
+<p>The first six work in a very similar fashion. You specify a vector of
+identifiers, and the function keeps (or drops, as we’ll see soon) all
+the entries that are in any way related to this id. Let’s see how that
+works using <code>filter_by_trip_id()</code>:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>path <span class="ot">&lt;-</span> <span class="fu">system.file</span>(<span class="st">&quot;extdata/spo_gtfs.zip&quot;</span>, <span class="at">package =</span> <span class="st">&quot;gtfstools&quot;</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>gtfs <span class="ot">&lt;-</span> <span class="fu">read_gtfs</span>(path)</span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>utils<span class="sc">::</span><span class="fu">object.size</span>(gtfs)</span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="co">#&gt; 811304 bytes</span></span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a><span class="fu">head</span>(gtfs<span class="sc">$</span>trips[, .(trip_id, trip_headsign, shape_id)])</span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a><span class="co">#&gt;       trip_id trip_headsign shape_id</span></span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a><span class="co">#&gt;        &lt;char&gt;        &lt;char&gt;   &lt;char&gt;</span></span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a><span class="co">#&gt; 1: CPTM L07-0       JUNDIAI    17846</span></span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a><span class="co">#&gt; 2: CPTM L07-1           LUZ    17847</span></span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a><span class="co">#&gt; 3: CPTM L08-0  AMADOR BUENO    17848</span></span>
+<span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a><span class="co">#&gt; 4: CPTM L08-1 JULIO PRESTES    17849</span></span>
+<span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a><span class="co">#&gt; 5: CPTM L09-0        GRAJAU    17850</span></span>
+<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a><span class="co">#&gt; 6: CPTM L09-1        OSASCO    17851</span></span>
+<span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a></span>
+<span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a><span class="co"># keeping trips CPTM L07-0 and CPTM L07-1</span></span>
+<span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a>smaller_gtfs <span class="ot">&lt;-</span> <span class="fu">filter_by_trip_id</span>(gtfs, <span class="fu">c</span>(<span class="st">&quot;CPTM L07-0&quot;</span>, <span class="st">&quot;CPTM L07-1&quot;</span>))</span>
+<span id="cb2-18"><a href="#cb2-18" tabindex="-1"></a>utils<span class="sc">::</span><span class="fu">object.size</span>(smaller_gtfs)</span>
+<span id="cb2-19"><a href="#cb2-19" tabindex="-1"></a><span class="co">#&gt; 71592 bytes</span></span>
+<span id="cb2-20"><a href="#cb2-20" tabindex="-1"></a></span>
+<span id="cb2-21"><a href="#cb2-21" tabindex="-1"></a><span class="fu">head</span>(smaller_gtfs<span class="sc">$</span>trips[, .(trip_id, trip_headsign, shape_id)])</span>
+<span id="cb2-22"><a href="#cb2-22" tabindex="-1"></a><span class="co">#&gt;       trip_id trip_headsign shape_id</span></span>
+<span id="cb2-23"><a href="#cb2-23" tabindex="-1"></a><span class="co">#&gt;        &lt;char&gt;        &lt;char&gt;   &lt;char&gt;</span></span>
+<span id="cb2-24"><a href="#cb2-24" tabindex="-1"></a><span class="co">#&gt; 1: CPTM L07-0       JUNDIAI    17846</span></span>
+<span id="cb2-25"><a href="#cb2-25" tabindex="-1"></a><span class="co">#&gt; 2: CPTM L07-1           LUZ    17847</span></span>
+<span id="cb2-26"><a href="#cb2-26" tabindex="-1"></a></span>
+<span id="cb2-27"><a href="#cb2-27" tabindex="-1"></a><span class="fu">unique</span>(smaller_gtfs<span class="sc">$</span>shapes<span class="sc">$</span>shape_id)</span>
+<span id="cb2-28"><a href="#cb2-28" tabindex="-1"></a><span class="co">#&gt; [1] &quot;17846&quot; &quot;17847&quot;</span></span></code></pre></div>
+<p>We can see from the code snippet above that the function not only
+filters the <code>trips</code> table, but all other tables that contain
+a key that can be identified via its relation to <code>trip_id</code>.
+For example, since the trips <code>CPTM L07-0</code> and
+<code>CPTM L07-1</code> are described by the shapes <code>17846</code>
+and <code>17847</code>, respectively, these are the only shapes kept in
+<code>smaller_gtfs</code>.</p>
+<p>The function also supports the opposite behaviour: instead of keeping
+the entries related to the specified identifiers, you can <em>drop</em>
+them. To do that, set the <code>keep</code> argument to
+<code>FALSE</code>:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="co"># dropping trips CPTM L07-0 and CPTM L07-1</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>smaller_gtfs <span class="ot">&lt;-</span> <span class="fu">filter_by_trip_id</span>(</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>    gtfs,</span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>    <span class="fu">c</span>(<span class="st">&quot;CPTM L07-0&quot;</span>, <span class="st">&quot;CPTM L07-1&quot;</span>),</span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>    <span class="at">keep =</span> <span class="cn">FALSE</span></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>)</span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>utils<span class="sc">::</span><span class="fu">object.size</span>(smaller_gtfs)</span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="co">#&gt; 762576 bytes</span></span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a></span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a><span class="fu">head</span>(smaller_gtfs<span class="sc">$</span>trips[, .(trip_id, trip_headsign, shape_id)])</span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a><span class="co">#&gt;       trip_id       trip_headsign shape_id</span></span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a><span class="co">#&gt;        &lt;char&gt;              &lt;char&gt;   &lt;char&gt;</span></span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a><span class="co">#&gt; 1: CPTM L08-0        AMADOR BUENO    17848</span></span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a><span class="co">#&gt; 2: CPTM L08-1       JULIO PRESTES    17849</span></span>
+<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a><span class="co">#&gt; 3: CPTM L09-0              GRAJAU    17850</span></span>
+<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a><span class="co">#&gt; 4: CPTM L09-1              OSASCO    17851</span></span>
+<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a><span class="co">#&gt; 5: CPTM L10-0 RIO GRANDE DA SERRA    17852</span></span>
+<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a><span class="co">#&gt; 6: CPTM L10-1                BRÁS    17853</span></span>
+<span id="cb3-19"><a href="#cb3-19" tabindex="-1"></a></span>
+<span id="cb3-20"><a href="#cb3-20" tabindex="-1"></a><span class="fu">head</span>(<span class="fu">unique</span>(smaller_gtfs<span class="sc">$</span>shapes<span class="sc">$</span>shape_id))</span>
+<span id="cb3-21"><a href="#cb3-21" tabindex="-1"></a><span class="co">#&gt; [1] &quot;17848&quot; &quot;17849&quot; &quot;17850&quot; &quot;17851&quot; &quot;17852&quot; &quot;17853&quot;</span></span></code></pre></div>
+<p>And the specified trips (and their respective shapes as well) are
+nowhere to be seen. Please note that, since we are keeping many more
+entries in the second case, the resulting GTFS object, though smaller
+than the original, is much larger than in the first case.</p>
+<p>The same logic demonstrated with <code>filter_by_trip_id()</code>
+applies to the functions that filter feeds by <code>agency_id</code>,
+<code>route_id</code>, <code>service_id</code>, <code>shape_id</code>,
+<code>stop_id</code> and <code>route_type</code>.</p>
 </div>
 <div id="filtering-by-day-of-the-week-or-time-of-the-day" class="section level1">
 <h1>Filtering by day of the week or time of the day:</h1>
-<p>Frequently enough one wants to analyze service levels on certain days of the week or during different times of the day. The functions <code>filter_by_weekday()</code> and <code>filter_by_time_of_day()</code> can be used to this purpose.</p>
-<p>The first one takes the days of the week you want to keep/drop and also includes a <code>combine</code> argument that controls how multi-day filters work. Let’s see how that works with a few examples:</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb4-1" title="1"><span class="co"># keeping entries related to services than run on saturdays AND sundays</span></a>
-<a class="sourceLine" id="cb4-2" title="2">smaller_gtfs &lt;-<span class="st"> </span><span class="kw">filter_by_weekday</span>(</a>
-<a class="sourceLine" id="cb4-3" title="3">  gtfs,</a>
-<a class="sourceLine" id="cb4-4" title="4">  <span class="dt">weekday =</span> <span class="kw">c</span>(<span class="st">&quot;saturday&quot;</span>, <span class="st">&quot;sunday&quot;</span>),</a>
-<a class="sourceLine" id="cb4-5" title="5">  <span class="dt">combine =</span> <span class="st">&quot;and&quot;</span></a>
-<a class="sourceLine" id="cb4-6" title="6">)</a>
-<a class="sourceLine" id="cb4-7" title="7">smaller_gtfs<span class="op">$</span>calendar[, <span class="kw">c</span>(<span class="st">&quot;service_id&quot;</span>, <span class="st">&quot;sunday&quot;</span>, <span class="st">&quot;saturday&quot;</span>)]</a>
-<a class="sourceLine" id="cb4-8" title="8"><span class="co">#&gt;    service_id sunday saturday</span></a>
-<a class="sourceLine" id="cb4-9" title="9"><span class="co">#&gt; 1:        USD      1        1</span></a>
-<a class="sourceLine" id="cb4-10" title="10"><span class="co">#&gt; 2:        _SD      1        1</span></a>
-<a class="sourceLine" id="cb4-11" title="11"><span class="co">#&gt; 3:        USD      1        1</span></a>
-<a class="sourceLine" id="cb4-12" title="12"><span class="co">#&gt; 4:        _SD      1        1</span></a>
-<a class="sourceLine" id="cb4-13" title="13"></a>
-<a class="sourceLine" id="cb4-14" title="14"><span class="co"># keeping entries related to services than run EITHER on saturdays OR on sundays</span></a>
-<a class="sourceLine" id="cb4-15" title="15">smaller_gtfs &lt;-<span class="st"> </span><span class="kw">filter_by_weekday</span>(</a>
-<a class="sourceLine" id="cb4-16" title="16">  gtfs,</a>
-<a class="sourceLine" id="cb4-17" title="17">  <span class="dt">weekday =</span> <span class="kw">c</span>(<span class="st">&quot;sunday&quot;</span>, <span class="st">&quot;saturday&quot;</span>),</a>
-<a class="sourceLine" id="cb4-18" title="18">  <span class="dt">combine =</span> <span class="st">&quot;or&quot;</span></a>
-<a class="sourceLine" id="cb4-19" title="19">)</a>
-<a class="sourceLine" id="cb4-20" title="20">smaller_gtfs<span class="op">$</span>calendar[, <span class="kw">c</span>(<span class="st">&quot;service_id&quot;</span>, <span class="st">&quot;sunday&quot;</span>, <span class="st">&quot;saturday&quot;</span>)]</a>
-<a class="sourceLine" id="cb4-21" title="21"><span class="co">#&gt;     service_id sunday saturday</span></a>
-<a class="sourceLine" id="cb4-22" title="22"><span class="co">#&gt;  1:        USD      1        1</span></a>
-<a class="sourceLine" id="cb4-23" title="23"><span class="co">#&gt;  2:        US_      0        1</span></a>
-<a class="sourceLine" id="cb4-24" title="24"><span class="co">#&gt;  3:        _SD      1        1</span></a>
-<a class="sourceLine" id="cb4-25" title="25"><span class="co">#&gt;  4:        __D      1        0</span></a>
-<a class="sourceLine" id="cb4-26" title="26"><span class="co">#&gt;  5:        _S_      0        1</span></a>
-<a class="sourceLine" id="cb4-27" title="27"><span class="co">#&gt;  6:        USD      1        1</span></a>
-<a class="sourceLine" id="cb4-28" title="28"><span class="co">#&gt;  7:        US_      0        1</span></a>
-<a class="sourceLine" id="cb4-29" title="29"><span class="co">#&gt;  8:        _SD      1        1</span></a>
-<a class="sourceLine" id="cb4-30" title="30"><span class="co">#&gt;  9:        __D      1        0</span></a>
-<a class="sourceLine" id="cb4-31" title="31"><span class="co">#&gt; 10:        _S_      0        1</span></a>
-<a class="sourceLine" id="cb4-32" title="32"></a>
-<a class="sourceLine" id="cb4-33" title="33"><span class="co"># dropping entries related to services that run on saturdaus AND sundays</span></a>
-<a class="sourceLine" id="cb4-34" title="34">smaller_gtfs &lt;-<span class="st"> </span><span class="kw">filter_by_weekday</span>(</a>
-<a class="sourceLine" id="cb4-35" title="35">  gtfs,</a>
-<a class="sourceLine" id="cb4-36" title="36">  <span class="dt">weekday =</span> <span class="kw">c</span>(<span class="st">&quot;saturday&quot;</span>, <span class="st">&quot;sunday&quot;</span>),</a>
-<a class="sourceLine" id="cb4-37" title="37">  <span class="dt">combine =</span> <span class="st">&quot;and&quot;</span>,</a>
-<a class="sourceLine" id="cb4-38" title="38">  <span class="dt">keep =</span> <span class="ot">FALSE</span></a>
-<a class="sourceLine" id="cb4-39" title="39">)</a>
-<a class="sourceLine" id="cb4-40" title="40">smaller_gtfs<span class="op">$</span>calendar[, <span class="kw">c</span>(<span class="st">&quot;service_id&quot;</span>, <span class="st">&quot;sunday&quot;</span>, <span class="st">&quot;saturday&quot;</span>)]</a>
-<a class="sourceLine" id="cb4-41" title="41"><span class="co">#&gt;    service_id sunday saturday</span></a>
-<a class="sourceLine" id="cb4-42" title="42"><span class="co">#&gt; 1:        U__      0        0</span></a>
-<a class="sourceLine" id="cb4-43" title="43"><span class="co">#&gt; 2:        US_      0        1</span></a>
-<a class="sourceLine" id="cb4-44" title="44"><span class="co">#&gt; 3:        __D      1        0</span></a>
-<a class="sourceLine" id="cb4-45" title="45"><span class="co">#&gt; 4:        _S_      0        1</span></a>
-<a class="sourceLine" id="cb4-46" title="46"><span class="co">#&gt; 5:        U__      0        0</span></a>
-<a class="sourceLine" id="cb4-47" title="47"><span class="co">#&gt; 6:        US_      0        1</span></a>
-<a class="sourceLine" id="cb4-48" title="48"><span class="co">#&gt; 7:        __D      1        0</span></a>
-<a class="sourceLine" id="cb4-49" title="49"><span class="co">#&gt; 8:        _S_      0        1</span></a>
-<a class="sourceLine" id="cb4-50" title="50"></a>
-<a class="sourceLine" id="cb4-51" title="51"><span class="co"># dropping entries related to services than run EITHER on saturdays OR on</span></a>
-<a class="sourceLine" id="cb4-52" title="52"><span class="co"># sundays</span></a>
-<a class="sourceLine" id="cb4-53" title="53">smaller_gtfs &lt;-<span class="st"> </span><span class="kw">filter_by_weekday</span>(</a>
-<a class="sourceLine" id="cb4-54" title="54">  gtfs,</a>
-<a class="sourceLine" id="cb4-55" title="55">  <span class="dt">weekday =</span> <span class="kw">c</span>(<span class="st">&quot;sunday&quot;</span>, <span class="st">&quot;saturday&quot;</span>),</a>
-<a class="sourceLine" id="cb4-56" title="56">  <span class="dt">combine =</span> <span class="st">&quot;or&quot;</span>,</a>
-<a class="sourceLine" id="cb4-57" title="57">  <span class="dt">keep =</span> <span class="ot">FALSE</span></a>
-<a class="sourceLine" id="cb4-58" title="58">)</a>
-<a class="sourceLine" id="cb4-59" title="59">smaller_gtfs<span class="op">$</span>calendar[, <span class="kw">c</span>(<span class="st">&quot;service_id&quot;</span>, <span class="st">&quot;sunday&quot;</span>, <span class="st">&quot;saturday&quot;</span>)]</a>
-<a class="sourceLine" id="cb4-60" title="60"><span class="co">#&gt;    service_id sunday saturday</span></a>
-<a class="sourceLine" id="cb4-61" title="61"><span class="co">#&gt; 1:        U__      0        0</span></a>
-<a class="sourceLine" id="cb4-62" title="62"><span class="co">#&gt; 2:        U__      0        0</span></a></code></pre></div>
-<p>Meanwhile, <code>filter_by_time_of_day()</code> takes the beginning and the end of a time block (the <code>from</code> and <code>to</code> arguments, respectively) and keeps the entries related to trips that run within the specified block. Please note that the function works a bit differently depending on whether a trip’s behaviour is described using the <code>frequencies</code> and the <code>stop_times</code> tables together or using the <code>stop_times</code> table alone: the <code>stop_times</code> entries of trips described in <code>frequencies</code> should not be filtered, because they are just “templates” that describe how long it takes from one stop to another (i.e. the departure and arrival times listed there should not be considered “as is”). Let’s see what that means with an example:</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb5-1" title="1">smaller_gtfs &lt;-<span class="st"> </span><span class="kw">filter_by_time_of_day</span>(gtfs, <span class="dt">from =</span> <span class="st">&quot;05:00:00&quot;</span>, <span class="dt">to =</span> <span class="st">&quot;06:00:00&quot;</span>)</a>
-<a class="sourceLine" id="cb5-2" title="2"></a>
-<a class="sourceLine" id="cb5-3" title="3"><span class="kw">head</span>(smaller_gtfs<span class="op">$</span>frequencies)</a>
-<a class="sourceLine" id="cb5-4" title="4"><span class="co">#&gt;       trip_id start_time end_time headway_secs</span></a>
-<a class="sourceLine" id="cb5-5" title="5"><span class="co">#&gt; 1: CPTM L07-0   05:00:00 05:59:00          360</span></a>
-<a class="sourceLine" id="cb5-6" title="6"><span class="co">#&gt; 2: CPTM L07-1   05:00:00 05:59:00          360</span></a>
-<a class="sourceLine" id="cb5-7" title="7"><span class="co">#&gt; 3: CPTM L08-0   05:00:00 05:59:00          480</span></a>
-<a class="sourceLine" id="cb5-8" title="8"><span class="co">#&gt; 4: CPTM L08-1   05:00:00 05:59:00          480</span></a>
-<a class="sourceLine" id="cb5-9" title="9"><span class="co">#&gt; 5: CPTM L09-0   05:00:00 05:59:00          480</span></a>
-<a class="sourceLine" id="cb5-10" title="10"><span class="co">#&gt; 6: CPTM L09-1   05:00:00 05:59:00          480</span></a>
-<a class="sourceLine" id="cb5-11" title="11"></a>
-<a class="sourceLine" id="cb5-12" title="12"><span class="co"># stop_times entries are preserved because they should be interpreted as</span></a>
-<a class="sourceLine" id="cb5-13" title="13"><span class="co"># &quot;templates&quot;</span></a>
-<a class="sourceLine" id="cb5-14" title="14"><span class="kw">head</span>(smaller_gtfs<span class="op">$</span>stop_times[, <span class="kw">c</span>(<span class="st">&quot;trip_id&quot;</span>, <span class="st">&quot;departure_time&quot;</span>, <span class="st">&quot;arrival_time&quot;</span>)])</a>
-<a class="sourceLine" id="cb5-15" title="15"><span class="co">#&gt;       trip_id departure_time arrival_time</span></a>
-<a class="sourceLine" id="cb5-16" title="16"><span class="co">#&gt; 1: CPTM L07-0       04:00:00     04:00:00</span></a>
-<a class="sourceLine" id="cb5-17" title="17"><span class="co">#&gt; 2: CPTM L07-0       04:08:00     04:08:00</span></a>
-<a class="sourceLine" id="cb5-18" title="18"><span class="co">#&gt; 3: CPTM L07-0       04:16:00     04:16:00</span></a>
-<a class="sourceLine" id="cb5-19" title="19"><span class="co">#&gt; 4: CPTM L07-0       04:24:00     04:24:00</span></a>
-<a class="sourceLine" id="cb5-20" title="20"><span class="co">#&gt; 5: CPTM L07-0       04:32:00     04:32:00</span></a>
-<a class="sourceLine" id="cb5-21" title="21"><span class="co">#&gt; 6: CPTM L07-0       04:40:00     04:40:00</span></a>
-<a class="sourceLine" id="cb5-22" title="22"></a>
-<a class="sourceLine" id="cb5-23" title="23"><span class="co"># had the feed not had a frequencies table, the stop_times table would be</span></a>
-<a class="sourceLine" id="cb5-24" title="24"><span class="co"># adjusted</span></a>
-<a class="sourceLine" id="cb5-25" title="25">frequencies &lt;-<span class="st"> </span>gtfs<span class="op">$</span>frequencies</a>
-<a class="sourceLine" id="cb5-26" title="26">gtfs<span class="op">$</span>frequencies &lt;-<span class="st"> </span><span class="ot">NULL</span></a>
-<a class="sourceLine" id="cb5-27" title="27">smaller_gtfs &lt;-<span class="st"> </span><span class="kw">filter_by_time_of_day</span>(gtfs, <span class="dt">from =</span> <span class="st">&quot;05:00:00&quot;</span>, <span class="dt">to =</span> <span class="st">&quot;06:00:00&quot;</span>)</a>
-<a class="sourceLine" id="cb5-28" title="28"></a>
-<a class="sourceLine" id="cb5-29" title="29"><span class="kw">head</span>(smaller_gtfs<span class="op">$</span>stop_times[, <span class="kw">c</span>(<span class="st">&quot;trip_id&quot;</span>, <span class="st">&quot;departure_time&quot;</span>, <span class="st">&quot;arrival_time&quot;</span>)])</a>
-<a class="sourceLine" id="cb5-30" title="30"><span class="co">#&gt;       trip_id departure_time arrival_time</span></a>
-<a class="sourceLine" id="cb5-31" title="31"><span class="co">#&gt; 1: CPTM L07-0       05:04:00     05:04:00</span></a>
-<a class="sourceLine" id="cb5-32" title="32"><span class="co">#&gt; 2: CPTM L07-0       05:12:00     05:12:00</span></a>
-<a class="sourceLine" id="cb5-33" title="33"><span class="co">#&gt; 3: CPTM L07-0       05:20:00     05:20:00</span></a>
-<a class="sourceLine" id="cb5-34" title="34"><span class="co">#&gt; 4: CPTM L07-0       05:28:00     05:28:00</span></a>
-<a class="sourceLine" id="cb5-35" title="35"><span class="co">#&gt; 5: CPTM L07-0       05:36:00     05:36:00</span></a>
-<a class="sourceLine" id="cb5-36" title="36"><span class="co">#&gt; 6: CPTM L07-0       05:44:00     05:44:00</span></a></code></pre></div>
-<p>When filtering the <code>stop_times</code> table, we have two options. We either keep entire trips that cross the specified time block, or we keep only the trip segments within this block (default behaviour). To control this behaviour you can use the <code>full_trips</code> parameter:</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb6-1" title="1">smaller_gtfs &lt;-<span class="st"> </span><span class="kw">filter_by_time_of_day</span>(</a>
-<a class="sourceLine" id="cb6-2" title="2">    gtfs,</a>
-<a class="sourceLine" id="cb6-3" title="3">    <span class="st">&quot;05:00:00&quot;</span>,</a>
-<a class="sourceLine" id="cb6-4" title="4">    <span class="st">&quot;06:00:00&quot;</span>,</a>
-<a class="sourceLine" id="cb6-5" title="5">    <span class="dt">full_trips =</span> <span class="ot">TRUE</span></a>
-<a class="sourceLine" id="cb6-6" title="6">)</a>
-<a class="sourceLine" id="cb6-7" title="7"></a>
-<a class="sourceLine" id="cb6-8" title="8"><span class="co"># CPTM L07-0 trip is kept intact because it crosses the time block</span></a>
-<a class="sourceLine" id="cb6-9" title="9"><span class="kw">head</span>(smaller_gtfs<span class="op">$</span>stop_times[, <span class="kw">c</span>(<span class="st">&quot;trip_id&quot;</span>, <span class="st">&quot;departure_time&quot;</span>, <span class="st">&quot;arrival_time&quot;</span>)])</a>
-<a class="sourceLine" id="cb6-10" title="10"><span class="co">#&gt;       trip_id departure_time arrival_time</span></a>
-<a class="sourceLine" id="cb6-11" title="11"><span class="co">#&gt; 1: CPTM L07-0       04:00:00     04:00:00</span></a>
-<a class="sourceLine" id="cb6-12" title="12"><span class="co">#&gt; 2: CPTM L07-0       04:08:00     04:08:00</span></a>
-<a class="sourceLine" id="cb6-13" title="13"><span class="co">#&gt; 3: CPTM L07-0       04:16:00     04:16:00</span></a>
-<a class="sourceLine" id="cb6-14" title="14"><span class="co">#&gt; 4: CPTM L07-0       04:24:00     04:24:00</span></a>
-<a class="sourceLine" id="cb6-15" title="15"><span class="co">#&gt; 5: CPTM L07-0       04:32:00     04:32:00</span></a>
-<a class="sourceLine" id="cb6-16" title="16"><span class="co">#&gt; 6: CPTM L07-0       04:40:00     04:40:00</span></a>
-<a class="sourceLine" id="cb6-17" title="17"></a>
-<a class="sourceLine" id="cb6-18" title="18"><span class="co"># dropping entries related to trips that cross the specified time block</span></a>
-<a class="sourceLine" id="cb6-19" title="19">smaller_gtfs &lt;-<span class="st"> </span><span class="kw">filter_by_time_of_day</span>(</a>
-<a class="sourceLine" id="cb6-20" title="20">    gtfs,</a>
-<a class="sourceLine" id="cb6-21" title="21">    <span class="st">&quot;05:00:00&quot;</span>,</a>
-<a class="sourceLine" id="cb6-22" title="22">    <span class="st">&quot;06:00:00&quot;</span>,</a>
-<a class="sourceLine" id="cb6-23" title="23">    <span class="dt">full_trips =</span> <span class="ot">TRUE</span>,</a>
-<a class="sourceLine" id="cb6-24" title="24">    <span class="dt">keep =</span> <span class="ot">FALSE</span></a>
-<a class="sourceLine" id="cb6-25" title="25">)</a>
-<a class="sourceLine" id="cb6-26" title="26"></a>
-<a class="sourceLine" id="cb6-27" title="27"><span class="co"># CPTM L07-0 trip is gone</span></a>
-<a class="sourceLine" id="cb6-28" title="28"><span class="kw">head</span>(smaller_gtfs<span class="op">$</span>stop_times[, <span class="kw">c</span>(<span class="st">&quot;trip_id&quot;</span>, <span class="st">&quot;departure_time&quot;</span>, <span class="st">&quot;arrival_time&quot;</span>)])</a>
-<a class="sourceLine" id="cb6-29" title="29"><span class="co">#&gt;       trip_id departure_time arrival_time</span></a>
-<a class="sourceLine" id="cb6-30" title="30"><span class="co">#&gt; 1: CPTM L09-0       04:00:00     04:00:00</span></a>
-<a class="sourceLine" id="cb6-31" title="31"><span class="co">#&gt; 2: CPTM L09-0       04:03:00     04:03:00</span></a>
-<a class="sourceLine" id="cb6-32" title="32"><span class="co">#&gt; 3: CPTM L09-0       04:06:00     04:06:00</span></a>
-<a class="sourceLine" id="cb6-33" title="33"><span class="co">#&gt; 4: CPTM L09-0       04:09:00     04:09:00</span></a>
-<a class="sourceLine" id="cb6-34" title="34"><span class="co">#&gt; 5: CPTM L09-0       04:12:00     04:12:00</span></a>
-<a class="sourceLine" id="cb6-35" title="35"><span class="co">#&gt; 6: CPTM L09-0       04:15:00     04:15:00</span></a></code></pre></div>
-<p><code>filter_by_time_of_day()</code> also includes a <code>update_frequencies</code> argument, used to control whether the <code>frequencies</code> table should have its <code>start_time</code> and <code>end_time</code> fields updated to fit inside/outside the specified time of day. Please read the function documentation to understand how this argument interacts with the <code>exact_times</code> field.</p>
+<p>Frequently enough one wants to analyze service levels on certain days
+of the week or during different times of the day. The functions
+<code>filter_by_weekday()</code> and
+<code>filter_by_time_of_day()</code> can be used to this purpose.</p>
+<p>The first one takes the days of the week you want to keep/drop and
+also includes a <code>combine</code> argument that controls how
+multi-day filters work. Let’s see how that works with a few
+examples:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="co"># keeping entries related to services than run on saturdays AND sundays</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>smaller_gtfs <span class="ot">&lt;-</span> <span class="fu">filter_by_weekday</span>(</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>  gtfs,</span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>  <span class="at">weekday =</span> <span class="fu">c</span>(<span class="st">&quot;saturday&quot;</span>, <span class="st">&quot;sunday&quot;</span>),</span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>  <span class="at">combine =</span> <span class="st">&quot;and&quot;</span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>)</span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>smaller_gtfs<span class="sc">$</span>calendar[, <span class="fu">c</span>(<span class="st">&quot;service_id&quot;</span>, <span class="st">&quot;sunday&quot;</span>, <span class="st">&quot;saturday&quot;</span>)]</span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="co">#&gt;    service_id sunday saturday</span></span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a><span class="co">#&gt;        &lt;char&gt;  &lt;int&gt;    &lt;int&gt;</span></span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a><span class="co">#&gt; 1:        USD      1        1</span></span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a><span class="co">#&gt; 2:        _SD      1        1</span></span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a><span class="co">#&gt; 3:        USD      1        1</span></span>
+<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a><span class="co">#&gt; 4:        _SD      1        1</span></span>
+<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a></span>
+<span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a><span class="co"># keeping entries related to services than run EITHER on saturdays OR on sundays</span></span>
+<span id="cb4-16"><a href="#cb4-16" tabindex="-1"></a>smaller_gtfs <span class="ot">&lt;-</span> <span class="fu">filter_by_weekday</span>(</span>
+<span id="cb4-17"><a href="#cb4-17" tabindex="-1"></a>  gtfs,</span>
+<span id="cb4-18"><a href="#cb4-18" tabindex="-1"></a>  <span class="at">weekday =</span> <span class="fu">c</span>(<span class="st">&quot;sunday&quot;</span>, <span class="st">&quot;saturday&quot;</span>),</span>
+<span id="cb4-19"><a href="#cb4-19" tabindex="-1"></a>  <span class="at">combine =</span> <span class="st">&quot;or&quot;</span></span>
+<span id="cb4-20"><a href="#cb4-20" tabindex="-1"></a>)</span>
+<span id="cb4-21"><a href="#cb4-21" tabindex="-1"></a>smaller_gtfs<span class="sc">$</span>calendar[, <span class="fu">c</span>(<span class="st">&quot;service_id&quot;</span>, <span class="st">&quot;sunday&quot;</span>, <span class="st">&quot;saturday&quot;</span>)]</span>
+<span id="cb4-22"><a href="#cb4-22" tabindex="-1"></a><span class="co">#&gt;     service_id sunday saturday</span></span>
+<span id="cb4-23"><a href="#cb4-23" tabindex="-1"></a><span class="co">#&gt;         &lt;char&gt;  &lt;int&gt;    &lt;int&gt;</span></span>
+<span id="cb4-24"><a href="#cb4-24" tabindex="-1"></a><span class="co">#&gt;  1:        USD      1        1</span></span>
+<span id="cb4-25"><a href="#cb4-25" tabindex="-1"></a><span class="co">#&gt;  2:        US_      0        1</span></span>
+<span id="cb4-26"><a href="#cb4-26" tabindex="-1"></a><span class="co">#&gt;  3:        _SD      1        1</span></span>
+<span id="cb4-27"><a href="#cb4-27" tabindex="-1"></a><span class="co">#&gt;  4:        __D      1        0</span></span>
+<span id="cb4-28"><a href="#cb4-28" tabindex="-1"></a><span class="co">#&gt;  5:        _S_      0        1</span></span>
+<span id="cb4-29"><a href="#cb4-29" tabindex="-1"></a><span class="co">#&gt;  6:        USD      1        1</span></span>
+<span id="cb4-30"><a href="#cb4-30" tabindex="-1"></a><span class="co">#&gt;  7:        US_      0        1</span></span>
+<span id="cb4-31"><a href="#cb4-31" tabindex="-1"></a><span class="co">#&gt;  8:        _SD      1        1</span></span>
+<span id="cb4-32"><a href="#cb4-32" tabindex="-1"></a><span class="co">#&gt;  9:        __D      1        0</span></span>
+<span id="cb4-33"><a href="#cb4-33" tabindex="-1"></a><span class="co">#&gt; 10:        _S_      0        1</span></span>
+<span id="cb4-34"><a href="#cb4-34" tabindex="-1"></a></span>
+<span id="cb4-35"><a href="#cb4-35" tabindex="-1"></a><span class="co"># dropping entries related to services that run on saturdaus AND sundays</span></span>
+<span id="cb4-36"><a href="#cb4-36" tabindex="-1"></a>smaller_gtfs <span class="ot">&lt;-</span> <span class="fu">filter_by_weekday</span>(</span>
+<span id="cb4-37"><a href="#cb4-37" tabindex="-1"></a>  gtfs,</span>
+<span id="cb4-38"><a href="#cb4-38" tabindex="-1"></a>  <span class="at">weekday =</span> <span class="fu">c</span>(<span class="st">&quot;saturday&quot;</span>, <span class="st">&quot;sunday&quot;</span>),</span>
+<span id="cb4-39"><a href="#cb4-39" tabindex="-1"></a>  <span class="at">combine =</span> <span class="st">&quot;and&quot;</span>,</span>
+<span id="cb4-40"><a href="#cb4-40" tabindex="-1"></a>  <span class="at">keep =</span> <span class="cn">FALSE</span></span>
+<span id="cb4-41"><a href="#cb4-41" tabindex="-1"></a>)</span>
+<span id="cb4-42"><a href="#cb4-42" tabindex="-1"></a>smaller_gtfs<span class="sc">$</span>calendar[, <span class="fu">c</span>(<span class="st">&quot;service_id&quot;</span>, <span class="st">&quot;sunday&quot;</span>, <span class="st">&quot;saturday&quot;</span>)]</span>
+<span id="cb4-43"><a href="#cb4-43" tabindex="-1"></a><span class="co">#&gt;    service_id sunday saturday</span></span>
+<span id="cb4-44"><a href="#cb4-44" tabindex="-1"></a><span class="co">#&gt;        &lt;char&gt;  &lt;int&gt;    &lt;int&gt;</span></span>
+<span id="cb4-45"><a href="#cb4-45" tabindex="-1"></a><span class="co">#&gt; 1:        U__      0        0</span></span>
+<span id="cb4-46"><a href="#cb4-46" tabindex="-1"></a><span class="co">#&gt; 2:        US_      0        1</span></span>
+<span id="cb4-47"><a href="#cb4-47" tabindex="-1"></a><span class="co">#&gt; 3:        __D      1        0</span></span>
+<span id="cb4-48"><a href="#cb4-48" tabindex="-1"></a><span class="co">#&gt; 4:        _S_      0        1</span></span>
+<span id="cb4-49"><a href="#cb4-49" tabindex="-1"></a><span class="co">#&gt; 5:        U__      0        0</span></span>
+<span id="cb4-50"><a href="#cb4-50" tabindex="-1"></a><span class="co">#&gt; 6:        US_      0        1</span></span>
+<span id="cb4-51"><a href="#cb4-51" tabindex="-1"></a><span class="co">#&gt; 7:        __D      1        0</span></span>
+<span id="cb4-52"><a href="#cb4-52" tabindex="-1"></a><span class="co">#&gt; 8:        _S_      0        1</span></span>
+<span id="cb4-53"><a href="#cb4-53" tabindex="-1"></a></span>
+<span id="cb4-54"><a href="#cb4-54" tabindex="-1"></a><span class="co"># dropping entries related to services than run EITHER on saturdays OR on</span></span>
+<span id="cb4-55"><a href="#cb4-55" tabindex="-1"></a><span class="co"># sundays</span></span>
+<span id="cb4-56"><a href="#cb4-56" tabindex="-1"></a>smaller_gtfs <span class="ot">&lt;-</span> <span class="fu">filter_by_weekday</span>(</span>
+<span id="cb4-57"><a href="#cb4-57" tabindex="-1"></a>  gtfs,</span>
+<span id="cb4-58"><a href="#cb4-58" tabindex="-1"></a>  <span class="at">weekday =</span> <span class="fu">c</span>(<span class="st">&quot;sunday&quot;</span>, <span class="st">&quot;saturday&quot;</span>),</span>
+<span id="cb4-59"><a href="#cb4-59" tabindex="-1"></a>  <span class="at">combine =</span> <span class="st">&quot;or&quot;</span>,</span>
+<span id="cb4-60"><a href="#cb4-60" tabindex="-1"></a>  <span class="at">keep =</span> <span class="cn">FALSE</span></span>
+<span id="cb4-61"><a href="#cb4-61" tabindex="-1"></a>)</span>
+<span id="cb4-62"><a href="#cb4-62" tabindex="-1"></a>smaller_gtfs<span class="sc">$</span>calendar[, <span class="fu">c</span>(<span class="st">&quot;service_id&quot;</span>, <span class="st">&quot;sunday&quot;</span>, <span class="st">&quot;saturday&quot;</span>)]</span>
+<span id="cb4-63"><a href="#cb4-63" tabindex="-1"></a><span class="co">#&gt;    service_id sunday saturday</span></span>
+<span id="cb4-64"><a href="#cb4-64" tabindex="-1"></a><span class="co">#&gt;        &lt;char&gt;  &lt;int&gt;    &lt;int&gt;</span></span>
+<span id="cb4-65"><a href="#cb4-65" tabindex="-1"></a><span class="co">#&gt; 1:        U__      0        0</span></span>
+<span id="cb4-66"><a href="#cb4-66" tabindex="-1"></a><span class="co">#&gt; 2:        U__      0        0</span></span></code></pre></div>
+<p>Meanwhile, <code>filter_by_time_of_day()</code> takes the beginning
+and the end of a time block (the <code>from</code> and <code>to</code>
+arguments, respectively) and keeps the entries related to trips that run
+within the specified block. Please note that the function works a bit
+differently depending on whether a trip’s behaviour is described using
+the <code>frequencies</code> and the <code>stop_times</code> tables
+together or using the <code>stop_times</code> table alone: the
+<code>stop_times</code> entries of trips described in
+<code>frequencies</code> should not be filtered, because they are just
+“templates” that describe how long it takes from one stop to another
+(i.e. the departure and arrival times listed there should not be
+considered “as is”). Let’s see what that means with an example:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>smaller_gtfs <span class="ot">&lt;-</span> <span class="fu">filter_by_time_of_day</span>(gtfs, <span class="at">from =</span> <span class="st">&quot;05:00:00&quot;</span>, <span class="at">to =</span> <span class="st">&quot;06:00:00&quot;</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="fu">head</span>(smaller_gtfs<span class="sc">$</span>frequencies)</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co">#&gt;       trip_id start_time end_time headway_secs</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="co">#&gt;        &lt;char&gt;     &lt;char&gt;   &lt;char&gt;        &lt;int&gt;</span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="co">#&gt; 1: CPTM L07-0   05:00:00 05:59:00          360</span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="co">#&gt; 2: CPTM L07-1   05:00:00 05:59:00          360</span></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="co">#&gt; 3: CPTM L08-0   05:00:00 05:59:00          480</span></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a><span class="co">#&gt; 4: CPTM L08-1   05:00:00 05:59:00          480</span></span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a><span class="co">#&gt; 5: CPTM L09-0   05:00:00 05:59:00          480</span></span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a><span class="co">#&gt; 6: CPTM L09-1   05:00:00 05:59:00          480</span></span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a></span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a><span class="co"># stop_times entries are preserved because they should be interpreted as</span></span>
+<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a><span class="co"># &quot;templates&quot;</span></span>
+<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a><span class="fu">head</span>(smaller_gtfs<span class="sc">$</span>stop_times[, <span class="fu">c</span>(<span class="st">&quot;trip_id&quot;</span>, <span class="st">&quot;departure_time&quot;</span>, <span class="st">&quot;arrival_time&quot;</span>)])</span>
+<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a><span class="co">#&gt;       trip_id departure_time arrival_time</span></span>
+<span id="cb5-17"><a href="#cb5-17" tabindex="-1"></a><span class="co">#&gt;        &lt;char&gt;         &lt;char&gt;       &lt;char&gt;</span></span>
+<span id="cb5-18"><a href="#cb5-18" tabindex="-1"></a><span class="co">#&gt; 1: CPTM L07-0       04:00:00     04:00:00</span></span>
+<span id="cb5-19"><a href="#cb5-19" tabindex="-1"></a><span class="co">#&gt; 2: CPTM L07-0       04:08:00     04:08:00</span></span>
+<span id="cb5-20"><a href="#cb5-20" tabindex="-1"></a><span class="co">#&gt; 3: CPTM L07-0       04:16:00     04:16:00</span></span>
+<span id="cb5-21"><a href="#cb5-21" tabindex="-1"></a><span class="co">#&gt; 4: CPTM L07-0       04:24:00     04:24:00</span></span>
+<span id="cb5-22"><a href="#cb5-22" tabindex="-1"></a><span class="co">#&gt; 5: CPTM L07-0       04:32:00     04:32:00</span></span>
+<span id="cb5-23"><a href="#cb5-23" tabindex="-1"></a><span class="co">#&gt; 6: CPTM L07-0       04:40:00     04:40:00</span></span>
+<span id="cb5-24"><a href="#cb5-24" tabindex="-1"></a></span>
+<span id="cb5-25"><a href="#cb5-25" tabindex="-1"></a><span class="co"># had the feed not had a frequencies table, the stop_times table would be</span></span>
+<span id="cb5-26"><a href="#cb5-26" tabindex="-1"></a><span class="co"># adjusted</span></span>
+<span id="cb5-27"><a href="#cb5-27" tabindex="-1"></a>frequencies <span class="ot">&lt;-</span> gtfs<span class="sc">$</span>frequencies</span>
+<span id="cb5-28"><a href="#cb5-28" tabindex="-1"></a>gtfs<span class="sc">$</span>frequencies <span class="ot">&lt;-</span> <span class="cn">NULL</span></span>
+<span id="cb5-29"><a href="#cb5-29" tabindex="-1"></a>smaller_gtfs <span class="ot">&lt;-</span> <span class="fu">filter_by_time_of_day</span>(gtfs, <span class="at">from =</span> <span class="st">&quot;05:00:00&quot;</span>, <span class="at">to =</span> <span class="st">&quot;06:00:00&quot;</span>)</span>
+<span id="cb5-30"><a href="#cb5-30" tabindex="-1"></a></span>
+<span id="cb5-31"><a href="#cb5-31" tabindex="-1"></a><span class="fu">head</span>(smaller_gtfs<span class="sc">$</span>stop_times[, <span class="fu">c</span>(<span class="st">&quot;trip_id&quot;</span>, <span class="st">&quot;departure_time&quot;</span>, <span class="st">&quot;arrival_time&quot;</span>)])</span>
+<span id="cb5-32"><a href="#cb5-32" tabindex="-1"></a><span class="co">#&gt;       trip_id departure_time arrival_time</span></span>
+<span id="cb5-33"><a href="#cb5-33" tabindex="-1"></a><span class="co">#&gt;        &lt;char&gt;         &lt;char&gt;       &lt;char&gt;</span></span>
+<span id="cb5-34"><a href="#cb5-34" tabindex="-1"></a><span class="co">#&gt; 1: CPTM L07-0       05:04:00     05:04:00</span></span>
+<span id="cb5-35"><a href="#cb5-35" tabindex="-1"></a><span class="co">#&gt; 2: CPTM L07-0       05:12:00     05:12:00</span></span>
+<span id="cb5-36"><a href="#cb5-36" tabindex="-1"></a><span class="co">#&gt; 3: CPTM L07-0       05:20:00     05:20:00</span></span>
+<span id="cb5-37"><a href="#cb5-37" tabindex="-1"></a><span class="co">#&gt; 4: CPTM L07-0       05:28:00     05:28:00</span></span>
+<span id="cb5-38"><a href="#cb5-38" tabindex="-1"></a><span class="co">#&gt; 5: CPTM L07-0       05:36:00     05:36:00</span></span>
+<span id="cb5-39"><a href="#cb5-39" tabindex="-1"></a><span class="co">#&gt; 6: CPTM L07-0       05:44:00     05:44:00</span></span></code></pre></div>
+<p>When filtering the <code>stop_times</code> table, we have two
+options. We either keep entire trips that cross the specified time
+block, or we keep only the trip segments within this block (default
+behaviour). To control this behaviour you can use the
+<code>full_trips</code> parameter:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>smaller_gtfs <span class="ot">&lt;-</span> <span class="fu">filter_by_time_of_day</span>(</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>    gtfs,</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>    <span class="st">&quot;05:00:00&quot;</span>,</span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>    <span class="st">&quot;06:00:00&quot;</span>,</span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>    <span class="at">full_trips =</span> <span class="cn">TRUE</span></span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>)</span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a></span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a><span class="co"># CPTM L07-0 trip is kept intact because it crosses the time block</span></span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a><span class="fu">head</span>(smaller_gtfs<span class="sc">$</span>stop_times[, <span class="fu">c</span>(<span class="st">&quot;trip_id&quot;</span>, <span class="st">&quot;departure_time&quot;</span>, <span class="st">&quot;arrival_time&quot;</span>)])</span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a><span class="co">#&gt;       trip_id departure_time arrival_time</span></span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a><span class="co">#&gt;        &lt;char&gt;         &lt;char&gt;       &lt;char&gt;</span></span>
+<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a><span class="co">#&gt; 1: CPTM L07-0       04:00:00     04:00:00</span></span>
+<span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a><span class="co">#&gt; 2: CPTM L07-0       04:08:00     04:08:00</span></span>
+<span id="cb6-14"><a href="#cb6-14" tabindex="-1"></a><span class="co">#&gt; 3: CPTM L07-0       04:16:00     04:16:00</span></span>
+<span id="cb6-15"><a href="#cb6-15" tabindex="-1"></a><span class="co">#&gt; 4: CPTM L07-0       04:24:00     04:24:00</span></span>
+<span id="cb6-16"><a href="#cb6-16" tabindex="-1"></a><span class="co">#&gt; 5: CPTM L07-0       04:32:00     04:32:00</span></span>
+<span id="cb6-17"><a href="#cb6-17" tabindex="-1"></a><span class="co">#&gt; 6: CPTM L07-0       04:40:00     04:40:00</span></span>
+<span id="cb6-18"><a href="#cb6-18" tabindex="-1"></a></span>
+<span id="cb6-19"><a href="#cb6-19" tabindex="-1"></a><span class="co"># dropping entries related to trips that cross the specified time block</span></span>
+<span id="cb6-20"><a href="#cb6-20" tabindex="-1"></a>smaller_gtfs <span class="ot">&lt;-</span> <span class="fu">filter_by_time_of_day</span>(</span>
+<span id="cb6-21"><a href="#cb6-21" tabindex="-1"></a>    gtfs,</span>
+<span id="cb6-22"><a href="#cb6-22" tabindex="-1"></a>    <span class="st">&quot;05:00:00&quot;</span>,</span>
+<span id="cb6-23"><a href="#cb6-23" tabindex="-1"></a>    <span class="st">&quot;06:00:00&quot;</span>,</span>
+<span id="cb6-24"><a href="#cb6-24" tabindex="-1"></a>    <span class="at">full_trips =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb6-25"><a href="#cb6-25" tabindex="-1"></a>    <span class="at">keep =</span> <span class="cn">FALSE</span></span>
+<span id="cb6-26"><a href="#cb6-26" tabindex="-1"></a>)</span>
+<span id="cb6-27"><a href="#cb6-27" tabindex="-1"></a></span>
+<span id="cb6-28"><a href="#cb6-28" tabindex="-1"></a><span class="co"># CPTM L07-0 trip is gone</span></span>
+<span id="cb6-29"><a href="#cb6-29" tabindex="-1"></a><span class="fu">head</span>(smaller_gtfs<span class="sc">$</span>stop_times[, <span class="fu">c</span>(<span class="st">&quot;trip_id&quot;</span>, <span class="st">&quot;departure_time&quot;</span>, <span class="st">&quot;arrival_time&quot;</span>)])</span>
+<span id="cb6-30"><a href="#cb6-30" tabindex="-1"></a><span class="co">#&gt;       trip_id departure_time arrival_time</span></span>
+<span id="cb6-31"><a href="#cb6-31" tabindex="-1"></a><span class="co">#&gt;        &lt;char&gt;         &lt;char&gt;       &lt;char&gt;</span></span>
+<span id="cb6-32"><a href="#cb6-32" tabindex="-1"></a><span class="co">#&gt; 1: CPTM L09-0       04:00:00     04:00:00</span></span>
+<span id="cb6-33"><a href="#cb6-33" tabindex="-1"></a><span class="co">#&gt; 2: CPTM L09-0       04:03:00     04:03:00</span></span>
+<span id="cb6-34"><a href="#cb6-34" tabindex="-1"></a><span class="co">#&gt; 3: CPTM L09-0       04:06:00     04:06:00</span></span>
+<span id="cb6-35"><a href="#cb6-35" tabindex="-1"></a><span class="co">#&gt; 4: CPTM L09-0       04:09:00     04:09:00</span></span>
+<span id="cb6-36"><a href="#cb6-36" tabindex="-1"></a><span class="co">#&gt; 5: CPTM L09-0       04:12:00     04:12:00</span></span>
+<span id="cb6-37"><a href="#cb6-37" tabindex="-1"></a><span class="co">#&gt; 6: CPTM L09-0       04:15:00     04:15:00</span></span></code></pre></div>
+<p><code>filter_by_time_of_day()</code> also includes a
+<code>update_frequencies</code> argument, used to control whether the
+<code>frequencies</code> table should have its <code>start_time</code>
+and <code>end_time</code> fields updated to fit inside/outside the
+specified time of day. Please read the function documentation to
+understand how this argument interacts with the <code>exact_times</code>
+field.</p>
 </div>
 <div id="filtering-using-a-spatial-extent" class="section level1">
 <h1>Filtering using a spatial extent</h1>
-<p>It’s not uncommon that one wants to analyze only the transit services of a smaller region contained inside a feed. The <code>filter_by_sf()</code> function allows you to filter GTFS data using a given spatial extent. This functions takes a spatial <code>sf</code>/<code>sfc</code> object (or its bounding box) and keeps/drops the entries related to shapes and trips selected via a specified spatial operation. It may sound a bit complicated, but it’s fairly easy to understand when shown. Let’s create an auxiliary function to save us some typing:</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb7-1" title="1">plotter &lt;-<span class="st"> </span><span class="cf">function</span>(gtfs,</a>
-<a class="sourceLine" id="cb7-2" title="2">                    geom,</a>
-<a class="sourceLine" id="cb7-3" title="3">                    <span class="dt">spatial_operation =</span> sf<span class="op">::</span>st_intersects,</a>
-<a class="sourceLine" id="cb7-4" title="4">                    <span class="dt">keep =</span> <span class="ot">TRUE</span>,</a>
-<a class="sourceLine" id="cb7-5" title="5">                    <span class="dt">do_filter =</span> <span class="ot">TRUE</span>) {</a>
-<a class="sourceLine" id="cb7-6" title="6">  <span class="cf">if</span> (do_filter) {</a>
-<a class="sourceLine" id="cb7-7" title="7">    gtfs &lt;-<span class="st"> </span><span class="kw">filter_by_sf</span>(gtfs, geom, spatial_operation, keep)</a>
-<a class="sourceLine" id="cb7-8" title="8">  }</a>
-<a class="sourceLine" id="cb7-9" title="9"></a>
-<a class="sourceLine" id="cb7-10" title="10">  shapes &lt;-<span class="st"> </span><span class="kw">convert_shapes_to_sf</span>(gtfs)</a>
-<a class="sourceLine" id="cb7-11" title="11">  trips &lt;-<span class="st"> </span><span class="kw">get_trip_geometry</span>(gtfs, <span class="dt">file =</span> <span class="st">&quot;stop_times&quot;</span>)</a>
-<a class="sourceLine" id="cb7-12" title="12">  geom &lt;-<span class="st"> </span>sf<span class="op">::</span><span class="kw">st_as_sfc</span>(geom)</a>
-<a class="sourceLine" id="cb7-13" title="13"></a>
-<a class="sourceLine" id="cb7-14" title="14">  <span class="kw">ggplot</span>() <span class="op">+</span></a>
-<a class="sourceLine" id="cb7-15" title="15"><span class="st">    </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> trips) <span class="op">+</span></a>
-<a class="sourceLine" id="cb7-16" title="16"><span class="st">    </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> shapes) <span class="op">+</span></a>
-<a class="sourceLine" id="cb7-17" title="17"><span class="st">    </span><span class="kw">geom_sf</span>(<span class="dt">data =</span> geom, <span class="dt">fill =</span> <span class="ot">NA</span>)</a>
-<a class="sourceLine" id="cb7-18" title="18">}</a></code></pre></div>
+<p>It’s not uncommon that one wants to analyze only the transit services
+of a smaller region contained inside a feed. The
+<code>filter_by_sf()</code> function allows you to filter GTFS data
+using a given spatial extent. This functions takes a spatial
+<code>sf</code>/<code>sfc</code> object (or its bounding box) and
+keeps/drops the entries related to shapes and trips selected via a
+specified spatial operation. It may sound a bit complicated, but it’s
+fairly easy to understand when shown. Let’s create an auxiliary function
+to save us some typing:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>plotter <span class="ot">&lt;-</span> <span class="cf">function</span>(gtfs,</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>                    geom,</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>                    <span class="at">spatial_operation =</span> sf<span class="sc">::</span>st_intersects,</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>                    <span class="at">keep =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>                    <span class="at">do_filter =</span> <span class="cn">TRUE</span>) {</span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>  <span class="cf">if</span> (do_filter) {</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>    gtfs <span class="ot">&lt;-</span> <span class="fu">filter_by_sf</span>(gtfs, geom, spatial_operation, keep)</span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>  }</span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a></span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>  shapes <span class="ot">&lt;-</span> <span class="fu">convert_shapes_to_sf</span>(gtfs)</span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a>  trips <span class="ot">&lt;-</span> <span class="fu">get_trip_geometry</span>(gtfs, <span class="at">file =</span> <span class="st">&quot;stop_times&quot;</span>)</span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a>  geom <span class="ot">&lt;-</span> sf<span class="sc">::</span><span class="fu">st_as_sfc</span>(geom)</span>
+<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a></span>
+<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a>  <span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a>    <span class="fu">geom_sf</span>(<span class="at">data =</span> trips) <span class="sc">+</span></span>
+<span id="cb7-16"><a href="#cb7-16" tabindex="-1"></a>    <span class="fu">geom_sf</span>(<span class="at">data =</span> shapes) <span class="sc">+</span></span>
+<span id="cb7-17"><a href="#cb7-17" tabindex="-1"></a>    <span class="fu">geom_sf</span>(<span class="at">data =</span> geom, <span class="at">fill =</span> <span class="cn">NA</span>)</span>
+<span id="cb7-18"><a href="#cb7-18" tabindex="-1"></a>}</span></code></pre></div>
 <p>This function:</p>
 <ul>
-<li>Conditionally filters a GTFS object given a spatial object (called <code>geom</code>);</li>
-<li>Generates shapes’ and trips’ geometries as described in their respective tables;</li>
+<li>Conditionally filters a GTFS object given a spatial object (called
+<code>geom</code>);</li>
+<li>Generates shapes’ and trips’ geometries as described in their
+respective tables;</li>
 <li>Generates a polygon from the bounding box;</li>
-<li>Plots all the <code>sf</code> objects cited above to show the effect of each <code>filter_by_sf()</code> argument in the final result.</li>
+<li>Plots all the <code>sf</code> objects cited above to show the effect
+of each <code>filter_by_sf()</code> argument in the final result.</li>
 </ul>
-<p>Also, please note that our <code>plotter()</code> function takes the same arguments of <code>filter_by_sf()</code> (with the exception of <code>do_filter</code>, which is used to show the unfiltered data), as well as the same defaults.</p>
-<p>Let’s say that we want to filter GTFS data using the bounding box of the shape <code>68962</code>. Here’s how the unfiltered data looks like, with the bounding box placed on top of it.</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb8-1" title="1">bbox &lt;-<span class="st"> </span>sf<span class="op">::</span><span class="kw">st_bbox</span>(<span class="kw">convert_shapes_to_sf</span>(gtfs, <span class="dt">shape_id =</span> <span class="st">&quot;68962&quot;</span>))</a>
-<a class="sourceLine" id="cb8-2" title="2"></a>
-<a class="sourceLine" id="cb8-3" title="3"><span class="kw">plotter</span>(gtfs, bbox, <span class="dt">do_filter =</span> <span class="ot">FALSE</span>)</a></code></pre></div>
-<p><img src="data:image/png;base64,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" /><!-- --></p>
-<p>By default <code>filter_by_sf()</code> (and <code>plotter()</code>, consequently) keeps all the data related to the trips and shapes that intersect the given geometry. Here’s how it looks like:</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb9-1" title="1"><span class="kw">plotter</span>(gtfs, bbox)</a></code></pre></div>
-<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>Also, please note that our <code>plotter()</code> function takes the
+same arguments of <code>filter_by_sf()</code> (with the exception of
+<code>do_filter</code>, which is used to show the unfiltered data), as
+well as the same defaults.</p>
+<p>Let’s say that we want to filter GTFS data using the bounding box of
+the shape <code>68962</code>. Here’s how the unfiltered data looks like,
+with the bounding box placed on top of it.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>bbox <span class="ot">&lt;-</span> sf<span class="sc">::</span><span class="fu">st_bbox</span>(<span class="fu">convert_shapes_to_sf</span>(gtfs, <span class="at">shape_id =</span> <span class="st">&quot;68962&quot;</span>))</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a></span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="fu">plotter</span>(gtfs, bbox, <span class="at">do_filter =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>By default <code>filter_by_sf()</code> (and <code>plotter()</code>,
+consequently) keeps all the data related to the trips and shapes that
+intersect the given geometry. Here’s how it looks like:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">plotter</span>(gtfs, bbox)</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="co">#&gt; Warning: `filter_by_sf()` was deprecated in gtfstools 1.3.0.</span></span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a><span class="co">#&gt; ℹ Please use `filter_by_spatial_extent()` instead.</span></span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="co">#&gt; ℹ For backwards compatibility reasons, usage of `filter_by_sf()` is still</span></span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a><span class="co">#&gt;   allowed as of the current version, but the function will be removed from the</span></span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a><span class="co">#&gt;   package in version 2.0.0.</span></span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
 <p>Alternatively you can also <em>drop</em> such data:</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb10-1" title="1"><span class="kw">plotter</span>(gtfs, bbox, <span class="dt">keep =</span> <span class="ot">FALSE</span>)</a></code></pre></div>
-<p><img src="data:image/png;base64,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" /><!-- --></p>
-<p>You can also control which spatial operation you want to use to filter the data. This is how you’d keep the data that is contained inside the given geometry:</p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb11-1" title="1"><span class="kw">plotter</span>(gtfs, bbox, <span class="dt">spatial_operation =</span> sf<span class="op">::</span>st_contains)</a></code></pre></div>
-<p><img src="data:image/png;base64,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" /><!-- --></p>
-<p>And, simultaneously using <code>spatial_operation</code> and <code>keep</code>, this is how you’d drop the data contained inside the geometry:</p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb12-1" title="1"><span class="kw">plotter</span>(gtfs, bbox, <span class="dt">spatial_operation =</span> sf<span class="op">::</span>st_contains, <span class="dt">keep =</span> <span class="ot">FALSE</span>)</a></code></pre></div>
-<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASAAAAEgCAMAAAAjXV6yAAADAFBMVEUAAAABAQECAgIDAwMEBAQFBQUGBgYHBwcICAgJCQkKCgoLCwsMDAwNDQ0ODg4PDw8QEBARERESEhITExMUFBQVFRUWFhYXFxcYGBgZGRkaGhobGxscHBwdHR0eHh4fHx8gICAhISEiIiIjIyMkJCQlJSUmJiYnJycoKCgpKSkqKiorKyssLCwtLS0uLi4vLy8wMDAxMTEyMjIzMzM0NDQ1NTU2NjY3Nzc4ODg5OTk6Ojo7Ozs8PDw9PT0+Pj4/Pz9AQEBBQUFCQkJDQ0NERERFRUVGRkZHR0dISEhJSUlKSkpLS0tMTExNTU1OTk5PT09QUFBRUVFSUlJTU1NUVFRVVVVWVlZXV1dYWFhZWVlaWlpbW1tcXFxdXV1eXl5fX19gYGBhYWFiYmJjY2NkZGRlZWVmZmZnZ2doaGhpaWlqampra2tsbGxtbW1ubm5vb29wcHBxcXFycnJzc3N0dHR1dXV2dnZ3d3d4eHh5eXl6enp7e3t8fHx9fX1+fn5/f3+AgICBgYGCgoKDg4OEhISFhYWGhoaHh4eIiIiJiYmKioqLi4uMjIyNjY2Ojo6Pj4+QkJCRkZGSkpKTk5OUlJSVlZWWlpaXl5eYmJiZmZmampqbm5ucnJydnZ2enp6fn5+goKChoaGioqKjo6OkpKSlpaWmpqanp6eoqKipqamqqqqrq6usrKytra2urq6vr6+wsLCxsbGysrKzs7O0tLS1tbW2tra3t7e4uLi5ubm6urq7u7u8vLy9vb2+vr6/v7/AwMDBwcHCwsLDw8PExMTFxcXGxsbHx8fIyMjJycnKysrLy8vMzMzNzc3Ozs7Pz8/Q0NDR0dHS0tLT09PU1NTV1dXW1tbX19fY2NjZ2dna2trb29vc3Nzd3d3e3t7f39/g4ODh4eHi4uLj4+Pk5OTl5eXm5ubn5+fo6Ojp6enq6urr6+vs7Ozt7e3u7u7v7+/w8PDx8fHy8vLz8/P09PT19fX29vb39/f4+Pj5+fn6+vr7+/v8/Pz9/f3+/v7////isF19AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAWXUlEQVR4nO2dCXgUxbqG/54teyCLkAgCGgQBBQSXQUT0KgGVACIIhggii6iIgApRiWExyiJGlMM9iAh4OXgPV0S9oHjRC4LiYUfkJCwiQdQQWlmyEAjJ1Knu6Z7p6e6Zqo4zOcN0fTxPUl3V33TnpaeXqr/+BsQUUPDv3oFwFwNEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEEANEUL0A/S7o/KXfDauq1rinss64p8Jl3FPu+sNn8c8A4gVV1/KGVVVn3FPpMu6pQMY95egP5eI5BkglBoggBoggEqDvxmfnnULok5HD5lYrK47kzihD6McXs8csvGhmQGVDDlUvnIF+GslXvPiBogLlny0pRLXDN144tehVMwPaVIDQiWy0bQVCH7+pqED5536ej8oG4qOn/HWDgB6ccFxVcxkDqq5AaHMeLpzdN2mHsuJQbv5JhMa9uK3KveKOjRu3lguqqSsPrG8BuNZ5J+XFn0+Xl19wbX+X4NLogsuoo7y8Ghn3nEcVysVK7Ul6y4hi/HP7k0+U+lSIqlo16YH840JpZNeu9wc+hXs0GqxW4GKuOSgsDALbZvTHcA7aULr/zbok/fYAKp/1TIm7tDZfVeHW2eVDavCvqnPnKsRbzQvku+J5NhCVkfdzX2jJtf84ChLbwkBjd7hV9bgrrkTGPRXotHJRfSddM3GpC//66EuEiscoKtzamCv8HH5YWhS/pDQn6eLJ09eXPuimxIGsWYbODWFyDvr6BfHXlom/Vc4vxGee81KFW78P2XSx7uvhF40CcmtxPDiad7v7vvSmg2fPXVQA3D+N7HiYAFqahTUMof8elTMHH10DiuQKt0qm5WS/fBTVD5BX4lUsA24w4gkTQIYkfkK9Ae0B7lcDHvMB4ttDTwMeEwI6DvAYvceEgPgcgPeoPWYExEfDZGqPKQGNhVRqjykB8VYopfWYE9Bt0J/WY05A68FWRukxJ6CdALmUHnMC4uO4OEqPSQE1d0ABncekgDpwwP0/lcekgL5ongCtqDwmBSQ8kdmoPKYFxNvhLzQe8wIaBjCawmNeQPz1EEPhMTGgYuAoPOECSDM2L5VCOTafAjPJnjABpBmbl0uhHJv/HLijRE+YANKMzculPzE2r5V6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" /><!-- --></p>
-<p>All filtering functions return a GTFS object readily available to be manipulated and analyzed using the rest of <strong>gtfstools</strong>’ toolkit. For more information on how to use other functions made available by the package, please see the <a href="gtfstools.html">introductory vignette</a>.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="fu">plotter</span>(gtfs, bbox, <span class="at">keep =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a><span class="co">#&gt; Warning: `filter_by_sf()` was deprecated in gtfstools 1.3.0.</span></span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a><span class="co">#&gt; ℹ Please use `filter_by_spatial_extent()` instead.</span></span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a><span class="co">#&gt; ℹ For backwards compatibility reasons, usage of `filter_by_sf()` is still</span></span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a><span class="co">#&gt;   allowed as of the current version, but the function will be removed from the</span></span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a><span class="co">#&gt;   package in version 2.0.0.</span></span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>You can also control which spatial operation you want to use to
+filter the data. This is how you’d keep the data that is contained
+inside the given geometry:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="fu">plotter</span>(gtfs, bbox, <span class="at">spatial_operation =</span> sf<span class="sc">::</span>st_contains)</span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="co">#&gt; Warning: `filter_by_sf()` was deprecated in gtfstools 1.3.0.</span></span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a><span class="co">#&gt; ℹ Please use `filter_by_spatial_extent()` instead.</span></span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a><span class="co">#&gt; ℹ For backwards compatibility reasons, usage of `filter_by_sf()` is still</span></span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a><span class="co">#&gt;   allowed as of the current version, but the function will be removed from the</span></span>
+<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a><span class="co">#&gt;   package in version 2.0.0.</span></span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>And, simultaneously using <code>spatial_operation</code> and
+<code>keep</code>, this is how you’d drop the data contained inside the
+geometry:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="fu">plotter</span>(gtfs, bbox, <span class="at">spatial_operation =</span> sf<span class="sc">::</span>st_contains, <span class="at">keep =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a><span class="co">#&gt; Warning: `filter_by_sf()` was deprecated in gtfstools 1.3.0.</span></span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a><span class="co">#&gt; ℹ Please use `filter_by_spatial_extent()` instead.</span></span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a><span class="co">#&gt; ℹ For backwards compatibility reasons, usage of `filter_by_sf()` is still</span></span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a><span class="co">#&gt;   allowed as of the current version, but the function will be removed from the</span></span>
+<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a><span class="co">#&gt;   package in version 2.0.0.</span></span></code></pre></div>
+<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASAAAAEgCAMAAAAjXV6yAAAAhFBMVEUAAAAzMzNNTU1NTW5NTY5NbqtNjshZWVluTU1uTW5uTY5ubo5ubqtujshuq+SOTU2OTW6OTY6Obk2Obm6ObquOjo6OyP+rbk2rbm6rbo6rjk2ryKuryP+r5OSr5P/Ijk3Ijm7I///kq27kq6vk/+Tk///r6+v/yI7/5Kv//8j//+T////eTC3dAAAACXBIWXMAAA7DAAAOwwHHb6hkAAAL1ElEQVR4nO2dCZebNhSFlWkSZ3WaNJ2ZtM0k4zbYY/7//ysgIbTfJwbZLO+ekwzGukZ81gJ6QhY1Kylx7QzMXQwIiAEBMSAgBgTEgIAYEBADAmJAQAwIiAEBMSAgBgTEgIAYEBADAmJAQAwIiAEBMSAgBgTEgIAYEBADAmJAQAwIiAEBMSAgBgTEgIAYEBADAmJAQAwIiAEBMSAgBgTEgIAYEBADAmJAQAwIiAEBMSAgBgTEgIAYEBADAhoFqJLq/2ZohOVKHgYEPAwIeBgQ8DAg4GFAwOMBOr25ubmt6+PNzctHc4fS0yf9xjYBPf3+UJ/ePpzePdaH18aOw02r26dPDavDq1/bBXRsqfzoSkwLSe/4t90+/dPta5llARJi+oxfyhNqgxQAWYLUDgXofNeXnvrFixeUdqr78FbDK7WP6p6HjOye7/Z12/T89mDsUIC6xkm/Qf+aOkSi32ws+uXYb/ZSHh/Q06e92lA1qduhAbV/3mZWMaWWifpnABuZ8Ut5PECnN7rLUk1Rt0MB6lok9caIRlqj6SyLBKT4HJumRpYgtUMB6nqx7EY6konMIjQPQKo7b/82TU3Taakd/f72OmhEGxTOxBIBZWl8LhSgLEIbBJRXhLYIKKsMMaCsjF/Kc2VAOZWMAWVl/FKeqwOiE9omoIwitFVAZEIMKCvjl/JcHxC5kjGgrIxfynN9QORxoY0CqsgdGQPKyvilPLMARKtk2wVE7Oo3DIhWyRhQnmfMcUZ4PEBebP5oBOOLxeYphOYByIvNq63CsfnlADq6sXm19azYPCHjBELzANSXotqMzTdbz4rNEzT7UH0iNt9tPTM2j79Z3NXPpQR5sXlzdockNjI2n874UgB5sXm5NU1sPplxRGgegLzYvNoqEZt3hCrZPAB5sXm1VSQ2b2sZgLI0PhcMKD/jsBtjQPmeMcfJ9DAg4JkNoOVcKF4HEGHMbNOAKKOuGweU7xlznHzPXACN8Iw5Tr6HAQHPPACRwhobBsRhH5AJWmh1u4CIsxc2C4hnd4BMMCCQCQYEMsGAQCYYEMjEwuYoepMX2khiyYUFyPOA5wHIm7xQt5GO24KTFxYG6OhPXji9/3Jbl5u8sDBAfSmq9eSF8/33u9uSkxfmPm1BKj554bA/D4BKTF5YWi/mTF44ffhlAaonn7xAnUk+E0Du5AXZOu8LTl4Qixru8CYv1LKbLzl5gfi4xjwA+ZMXJKCSkxcWBShL43PBgHIywYBQJhbVi80cUKTDi33CBgGF31s7IHobFL6qjH7ASgDlNNLBpAxIe7bZBpFDz7HbtvWXIDKg8FvRK6m1ACIRij9ALqJ1bC2AaHzib60fEMEioocR8U9YCSBSE7RlQBRCIgoowWc1gAiVTPQeD2a8BVoVIEBIr//q9WUpPgPUjMV15wkIFKF+gdzASYpKrjEcvAwY7t8EeR2emQJKZb9bY7kKAxLGGsNBQHqvSJa1WN48QF5svh2NHlYWKLjof+I6pwt8RABZWFxQtWWglaI0ID82L2M8F1j0P95GyDPuAAVMwk8aKVO0AFMa0NGNzZ/vuxhG6YUF5MlFUss3IoCS5zzyns98FWiDrNh8W6duisbmtaKLC+g37BT2bwnQDpGfK99px+bbOHNTioovLNB9wZHUQnmEW5uynzGbogQFFhYYnpuve2ZlACVHnOvKbY3zjzNJLzbpwgLx7jeYOrW7NsfLiNd90wMKLixw/vY4NjYfuUKJAUoNqFoDZiODjc/vxaZeWECofDmcAlfS8au9UBs0csoMDZCZKtBI0xXJRSJDQl32e112fzsQqpPCBzR60lX2yFxRQMF2wvxtlkimbEr9Rp3Px78Ogk2Xm2AqQP63nsxLbxGJTPcfIZsbM9XQAKG7dAuQTJg0CCFgNz8WkMVegKv6WqdLnKJ6S2M0ztMshKkzNk7W7gEjAdp2d6m7eWF9r7Ec+xlPJDfapAG4CJxhlFFtpHAO6X6IflluuGP4jsPnG8q446y8/cOZ6GppywQghlpkn2yijNoGL29TAhqOlwsoQciqSaGSEmCmb+ijw7S+PZa3SQFVRkFNKznkarVlfmGhq7fkOYuPKFKys6PLqmK5Ev3lVYZmMeS6i53MsK2KzK6vYOMiFCNK3mwBOV2NerETlTEmnSt3iITmsV7NCZDZEfYd+67vZiaIcY3xzAzQcHMr/+iUIh5ZTWmFgKxGo9nqASVi8wmtDpDbogoxAMpuTKr1AfJv4TQg+g+UmFoZIFH5Vy0DoHoEoXUBCt6o7HRzXVujk7TjrArQcONppZQ3VpUaMBvuLknHKQDIi82f74ZB6Mli89FerHLr2E4O/1Qy7JM7qDg9oGBs/vjq18Sx+SQgO6Xo2+fafotEaHpARzc2//S5Ky8Tx+bzAPVjO3bFGjVqQFBmbP704a+bYU37qWLzu/hbQ7i9Q7MTbeaEfGkH59u3x2chU/HY/Jvb9tHwiWPziRLktDI7oUdeh51DEtChlShB/nPzBRb9JwBSJ77TLXNt7vbTB1WkF7Nj809fTUDZsfmIMKAexE7v0cOnGReM0wPyn5v/YVaxqZ6bjwNya5IHCES2bE0PyI/NN1c+Lx+nfm4+Aaj7T5gpXUAZpWhVV9JS+sJ5SOkDIv+25uoAqZCNnTIAiDr4sTZAXlfejgeJECBK8G1c1uYMyL/USQG6zq3GNQH1YT5rX6SKuekiWgugPrbcbXspY4Cudi92cUDyfl14PZhKGQF0mV+1uz4gIfo5HIEBVwnIvNWoTCc8zioA9X9FqAB1KUPzdqpQYk8rAGTFUgOnvNN7AoeBV9TLB+ROWPBTpgAZI/hhVMsHZCl0kmlAlTWFyH9zZYBChCCgwRtwrw1QoOcmA+rsrn91gHxCu8jkyojd8W8BUJUDyCW0QkD+dVDkZpXkXx8g/1Yjq4q5RXCFgAI3q1mHsQEXiWrYsfl+MFppqtg8XbknWxhQaE37ArH5hCUas6ACMt3TAzr6a9p30C7x3LxSbECeehgTcJk2yF7TXm5c4rl5nZXnRtxLhOzja9pLXhd5bl7peVXM+oQSJch7br6NspZc097T8wHpalakF3Ofm//RAiu4pr2nyBhP3mFig2xYaUB+bF6ublJyTXtXkwCSHzM9oEBsvsNRck17R7FRwuzDiAVfSae7+XxP+IOmeL5jjoCmKkEVA0JaJaBooIIBSU0KKGO2XuQ48wM0pWfEk9LbAjSK0KYArbENmpmHAQEPAwIeBgQ8DAh4GBDwPAuQ0oix6THD2df1MCDgYUDAw4CAZxk/uHxFMSAgBgTEgIAYEBAdkPnLz3U3YUjPZ+hCrsduetFr12KsAXJ6Y/xQR8TieqwVRIgetSPLo6ZH+R46oIP6gC5kL3G97okd9s37f7b/7T2LXAOkloHZg55xFLE4HnsFEaJH7sjyqOlRAQ8Z0On9F1lyZPy5Xdrj9K5f0f304df5/u/2vwfXotYAqdVSBZ/TFtfjrCBC8qgdWR41PSrgoQI633+XxVbNHrIXZmiO9PT1v2+PZi6VRa0BUusSlLJ4HnsFEZpH7cjzyPwFPFRAh72s1+bcmOETG9Snj8030PznWtQaIF0OumYrZfE89goiNI/akeeR06MCHiKgttB1gPpq7iztcbg9NNV5b9ZzZVEJazm96PjyMWEJeOBhgh4DEM2jpkcFPERAsvXaq0lDtdsGNXX4Z9PKffz54FnUGiC1W+hCFt9jryBC86gdWR41/Sfgyevma93UtQWyaY76T3z6o/kyzvfvH33LD11d7BIUtjgeewURokfuyPKo6VEBTyYgVYjl0h5NiegvjM53XTfwOmTp1gBpLUfrlzrCFtdjryBC89jXbCRP37/7Hr6SBmJAQAwIiAEBMSAgBgTEgIAYEBADAmJAQAwIiAEBMSAgBgTEgIAYEBADAmJAQAwIiAEBMSAgBgTEgIAYEBADAmJAQAwIiAEBMSAgBgTEgIAYEBADAmJAQAwIiAEBMSAgBgTEgIAYEBADAmJAQAwIiAEBMSAgBgTEgIAYEBADAmJAQAwI6H9cdRzdQAkfpAAAAABJRU5ErkJggg==" /><!-- --></p>
+<p>All filtering functions return a GTFS object readily available to be
+manipulated and analyzed using the rest of <strong>gtfstools</strong>’
+toolkit. For more information on how to use other functions made
+available by the package, please see the <a href="gtfstools.html">introductory vignette</a>.</p>
 </div>
 
 

@@ -4,7 +4,14 @@
 \alias{filter_by_stop_id}
 \title{Filter GTFS object by \code{stop_id}}
 \usage{
-filter_by_stop_id(gtfs, stop_id, keep = TRUE)
+filter_by_stop_id(
+  gtfs,
+  stop_id,
+  keep = TRUE,
+  include_children = TRUE,
+  include_parents = keep,
+  full_trips = TRUE
+)
 }
 \arguments{
 \item{gtfs}{A GTFS object, as created by \code{\link[=read_gtfs]{read_gtfs()}}.}
@@ -14,6 +21,26 @@ filter_by_stop_id(gtfs, stop_id, keep = TRUE)
 \item{keep}{A logical. Whether the entries related to the \code{trip_id}s that
 passes through the specified \code{stop_id}s should be kept or dropped (defaults
 to \code{TRUE}, which keeps the entries).}
+
+\item{include_children}{A logical. Whether the filtered output should
+keep/drop children stops of those specified in \code{stop_id}. Defaults to
+\code{TRUE} - i.e. by default children stops are kept if their parents are kept
+and dropped if their parents are dropped.}
+
+\item{include_parents}{A logical. Whether the filtered output should
+keep/drop parent stations of those specified in \code{stop_id}. Defaults to
+the same value of \code{keep} - i.e. by default parent stations are kept both
+when their children are kept and dropped, because they can be parents of
+multiple stops that are not necessarily dropped, even if their sibling are.}
+
+\item{full_trips}{A logical. Whether to keep all stops that compose trips
+that pass through the stops specified in \code{stop_id}. Defaults to \code{TRUE}, in
+order to preserve the behavior of the function in versions 1.2.0 and below.
+Please note that when \code{TRUE}, the resultant filtered feed may contain more
+stops than the ones specified in \code{stop_id} to preserve the integrity of the
+trips. IMPORTANT: using \code{full_trips = TRUE} is flagged as deprecated as of
+version 1.3.0 and this parameter will default to \code{FALSE} from version 2.0.0
+onward.}
 }
 \value{
 The GTFS object passed to the \code{gtfs} parameter, after the filtering
@@ -21,9 +48,7 @@ process.
 }
 \description{
 Filters a GTFS object by \code{stop_id}s, keeping (or dropping) relevant entries
-in each file. In order to keep the integrity of trips as described in the
-\code{stop_times} table, the \code{stop_id}s are actually used to filter \code{trip_id}s,
-which are then used to filter the rest of the GTFS object.
+in each file.
 }
 \examples{
 data_path <- system.file("extdata/spo_gtfs.zip", package = "gtfstools")
@@ -33,13 +58,21 @@ stop_ids <- c("18848", "940004157")
 object.size(gtfs)
 
 # keeps entries related to trips that pass through specified stop_ids
-smaller_gtfs <- filter_by_stop_id(gtfs, stop_ids)
+smaller_gtfs <- filter_by_stop_id(gtfs, stop_ids, full_trips = FALSE)
 object.size(smaller_gtfs)
 
 # drops entries related to trips that pass through specified stop_ids
-smaller_gtfs <- filter_by_stop_id(gtfs, stop_ids, keep = FALSE)
+smaller_gtfs <- filter_by_stop_id(
+  gtfs,
+  stop_ids,
+  keep = FALSE,
+  full_trips = FALSE
+)
 object.size(smaller_gtfs)
 
+# the old behavior of filtering trips that contained the specified stops has
+# been deprecated
+invisible(filter_by_stop_id(gtfs, stop_ids, full_trips = TRUE))
 }
 \seealso{
 Other filtering functions: 
@@ -49,6 +82,7 @@ Other filtering functions:
 \code{\link{filter_by_service_id}()},
 \code{\link{filter_by_sf}()},
 \code{\link{filter_by_shape_id}()},
+\code{\link{filter_by_spatial_extent}()},
 \code{\link{filter_by_time_of_day}()},
 \code{\link{filter_by_trip_id}()},
 \code{\link{filter_by_weekday}()}

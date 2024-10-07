@@ -12,7 +12,7 @@ coverage](https://codecov.io/gh/ipeaGIT/gtfstools/branch/master/graph/badge.svg)
 [![Lifecycle:
 experimental](https://lifecycle.r-lib.org/articles/figures/lifecycle-experimental.svg)](https://lifecycle.r-lib.org/articles/stages.html)
 [![CRAN/METACRAN Total
-downloads](http://cranlogs.r-pkg.org/badges/grand-total/gtfstools?color=yellow)](https://CRAN.R-project.org/package=gtfstools)
+downloads](https://cranlogs.r-pkg.org/badges/grand-total/gtfstools?color=yellow)](https://CRAN.R-project.org/package=gtfstools)
 
 **gtfstools** offers a set of convenient tools for editing and analysing
 transit feeds in GTFS format. Feeds are read as a `list` of
@@ -63,10 +63,9 @@ Please read **gtfstools** vignettes for more on the package usage:
 
   - [`{tidytransit}`](https://github.com/r-transit/tidytransit)
   - [`{gtfs2gps}`](https://github.com/ipeaGIT/gtfs2gps)
-  - [`{gtfsrouter}`](https://github.com/ATFutures/gtfs-router)
+  - [`{gtfsrouter}`](https://github.com/UrbanAnalyst/gtfsrouter)
 
-## Acknowledgement <a href="https://www.ipea.gov.br"><img align="right"
-src="man/figures/ipea_logo.png" alt="IPEA" width="300" /></a>
+## Acknowledgement <a href="https://www.ipea.gov.br"><img align="right" src="man/figures/ipea_logo.png" alt="IPEA" width="300" /></a>
 
 **gtfstools** is developed by a team at the Institute for Applied
 Economic Research (Ipea), Brazil.

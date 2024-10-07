@@ -2,7 +2,7 @@
 % Please edit documentation in R/filter_by_sf.R
 \name{filter_by_sf}
 \alias{filter_by_sf}
-\title{Filter a GTFS object using a \verb{simple features} object}
+\title{Filter a GTFS object using a \verb{simple features} object (deprecated)}
 \usage{
 filter_by_sf(gtfs, geom, spatial_operation = sf::st_intersects, keep = TRUE)
 }
@@ -28,6 +28,10 @@ The GTFS object passed to the \code{gtfs} parameter, after the filtering
 process.
 }
 \description{
+This function has been deprecated as of the current package version and will
+be completely removed from version 2.0.0 onward. Please use
+\code{\link[=filter_by_spatial_extent]{filter_by_spatial_extent()}} instead.
+
 Filters a GTFS object using the geometry of an \code{sf} object, keeping (or
 dropping) entries related to shapes and trips selected through a spatial
 operation.
@@ -61,6 +65,7 @@ Other filtering functions:
 \code{\link{filter_by_route_type}()},
 \code{\link{filter_by_service_id}()},
 \code{\link{filter_by_shape_id}()},
+\code{\link{filter_by_spatial_extent}()},
 \code{\link{filter_by_stop_id}()},
 \code{\link{filter_by_time_of_day}()},
 \code{\link{filter_by_trip_id}()},

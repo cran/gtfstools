@@ -10,7 +10,7 @@
 #'   entries).
 #'
 #' @return The GTFS object passed to the `gtfs` parameter, after the filtering
-#' process.
+#'   process.
 #'
 #' @family filtering functions
 #'
@@ -31,232 +31,99 @@
 #'
 #' @export
 filter_by_shape_id <- function(gtfs, shape_id, keep = TRUE) {
-  checkmate::assert_class(gtfs, "dt_gtfs")
+  gtfs <- assert_and_assign_gtfs_object(gtfs)
   checkmate::assert_character(shape_id, any.missing = FALSE)
   checkmate::assert_logical(keep, len = 1, any.missing = FALSE)
-
-  # selecting the filter operator used to filter 'shape_id's based on 'keep' and
-  # storing the current environment to filter using the values of 'shape_id'
 
   `%ffilter%` <- `%chin%`
   if (!keep) `%ffilter%` <- Negate(`%chin%`)
 
-  env <- environment()
-
-  # 'shapes' and 'trips' can be filtered using 'shape_id' itself, so `%ffilter%`
+  # 'shapes' and 'trips' can be filtered using 'trip_id' itself, so `%ffilter%`
   # is used. the other files depend on relational associations with 'shape_id'
-  # that come from these 2 files.
+  # that come from these 2 tables, so we use %chin%.
 
   # 'shapes' (shape_id)
 
-  if (gtfsio::check_field_exists(gtfs, "shapes", "shape_id")) {
-
-    gtfsio::assert_field_class(gtfs, "shapes", "shape_id", "character")
-    gtfs$shapes <- gtfs$shapes[shape_id %ffilter% get("shape_id", envir = env)]
-
-  }
+  gtfs <- filter_shapes_from_shape_id(gtfs, shape_id, `%ffilter%`)
 
   # 'trips' (shape_id)
 
-  if (gtfsio::check_field_exists(gtfs, "trips", "shape_id")) {
+  gtfs <- filter_trips_from_shape_id(gtfs, shape_id, `%ffilter%`)
 
-    gtfsio::assert_field_class(gtfs, "trips", "shape_id", "character")
-    gtfs$trips <- gtfs$trips[shape_id %ffilter% get("shape_id", envir = env)]
+  # 'trips' allows us to filter by 'route_id', 'service_id' and 'trip_id'
 
-    # 'trips' allows us to filter by 'route_id', 'service_id' and 'trip_id'
+  relevant_routes <- unique(gtfs$trips$route_id)
+  relevant_services <- unique(gtfs$trips$service_id)
+  relevant_trips <- unique(gtfs$trips$trip_id)
 
-    relevant_routes <- unique(gtfs$trips$route_id)
-    relevant_services <- unique(gtfs$trips$service_id)
-    relevant_trips <- unique(gtfs$trips$trip_id)
+  # 'calendar' and 'calendar_dates' (service_id)
 
-    # 'calendar' and 'calendar_dates' (service_id)
+  gtfs <- filter_calendar_from_service_id(gtfs, relevant_services, `%chin%`)
+  gtfs <- filter_calend_dates_from_service_id(gtfs, relevant_services, `%chin%`)
 
-    if (gtfsio::check_field_exists(gtfs, "calendar", "service_id")) {
+  # 'routes', 'fare_rules' and 'transfers' (route_id)
+  #
+  # we can use 'routes' to filter agency via routes -> agency_id, but we can
+  # also use 'fare_rules' to filter it via fare_rules -> fare_id ->
+  # fare_attributes -> agency_id.
+  # so we create a 'relevant_agencies' vector that holds the relevant
+  # agency_ids from both paths and use all of them to filter agency later.
 
-      gtfsio::assert_field_class(gtfs, "calendar", "service_id", "character")
-      gtfs$calendar <- gtfs$calendar[service_id %chin% relevant_services]
+  gtfs <- filter_transfers_from_route_id(gtfs, relevant_routes, `%chin%`)
+  gtfs <- filter_routes_from_route_id(gtfs, relevant_routes, `%chin%`)
+  gtfs <- filter_fare_rules_from_route_id(gtfs, relevant_routes, `%chin%`)
+  relevant_agencies_from_routes <- unique(gtfs$routes$agency_id)
 
-    }
+  # 'fare_rules' allows us to filter by 'fare_id'
 
-    if (gtfsio::check_field_exists(gtfs, "calendar_dates", "service_id")) {
+  relevant_fares <- unique(gtfs$fare_rules$fare_id)
 
-      gtfsio::assert_field_class(
-        gtfs,
-        "calendar_dates",
-        "service_id",
-        "character"
-      )
-      gtfs$calendar_dates <- gtfs$calendar_dates[
-        service_id %chin% relevant_services
-      ]
+  # 'fare_attributes' (fare_id)
 
-    }
+  gtfs <- filter_fare_attr_from_fare_id(gtfs, relevant_fares, `%chin%`)
+  relevant_agencies_from_fare_attr <- unique(gtfs$fare_attributes$agency_id)
 
-    # 'routes' and 'fare_rules' (route_id)
-    # note that we can filter agency both via routes -> agency_id and via
-    # fare_rules -> fare_id -> fare_attributes -> agency_id. so we create a
-    # 'relevant_agencies' vector and, populate with agency_ids coming from both
-    # possibilities and use all of them to filter agency later
+  # 'agency' (agency_id, that comes both from routes and fare_attributes)
 
-    relevant_agencies <- vector("character", length = 0L)
+  relevant_agencies <- c(
+    relevant_agencies_from_routes,
+    relevant_agencies_from_fare_attr
+  )
+  relevant_agencies <- unique(relevant_agencies)
 
-    if (gtfsio::check_field_exists(gtfs, "routes", "route_id")) {
+  gtfs <- filter_agency_from_agency_id(gtfs, relevant_agencies, `%chin%`)
 
-      gtfsio::assert_field_class(gtfs, "routes", "route_id", "character")
-      gtfs$routes <- gtfs$routes[route_id %chin% relevant_routes]
+  # 'stop_times', 'frequencies' and 'transfers' (trip_id)
 
-      # 'routes' allows us to filter by 'agency_id'.
-      # 'agency_id' is conditionally required, which means that it may not be
-      # listed if 'agency' has only one row.
+  gtfs <- filter_transfers_from_trip_id(gtfs, relevant_trips, `%chin%`)
+  gtfs <- filter_frequencies_from_trip_id(gtfs, relevant_trips, `%chin%`)
+  gtfs <- filter_stop_times_from_trip_id(gtfs, relevant_trips, `%chin%`)
 
-      relevant_agencies_routes <- unique(gtfs$routes$agency_id)
+  # 'stop_times' allows us to filter by 'stop_id'
+  # it's important to keep not only the stops that appear on stop_times, but
+  # also their parent stops
+  # TODO: also include their children
 
-      if (is.null(relevant_agencies_routes))
-        relevant_agencies_routes <- unique(gtfs$agency$agency_id)
+  relevant_stops <- get_stops_and_parents(gtfs)
 
-      relevant_agencies <- c(relevant_agencies, relevant_agencies_routes)
+  # 'stops', 'transfers' and 'pathways' (stop_id)
 
-    }
+  gtfs <- filter_transfers_from_stop_id(gtfs, relevant_stops, `%chin%`)
+  gtfs <- filter_pathways_from_stop_id(gtfs, relevant_stops, `%chin%`)
+  gtfs <- filter_stops_from_stop_id(gtfs, relevant_stops, `%chin%`)
 
-    if (gtfsio::check_field_exists(gtfs, "fare_rules", "route_id")) {
+  # 'stops' allows us to filter by 'level_id' and 'zone_id'
 
-      gtfsio::assert_field_class(gtfs, "fare_rules", "route_id", "character")
-      gtfs$fare_rules <- gtfs$fare_rules[route_id %chin% relevant_routes]
+  relevant_zones <- unique(gtfs$stops$zone_id)
+  relevant_levels <- unique(gtfs$stops$level_id)
 
-      # 'fare_rules' allows us to filter by 'fare_id'
+  # 'fare_rules' (zone_id)
 
-      relevant_fares <- unique(gtfs$fare_rules$fare_id)
+  gtfs <- filter_fare_rules_from_zone_id(gtfs, relevant_zones, `%chin%`)
 
-      # 'fare_attributes' (fare_id)
+  # 'levels' (level_id)
 
-      if (gtfsio::check_field_exists(gtfs, "fare_attributes", "fare_id")) {
-
-        gtfsio::assert_field_class(
-          gtfs,
-          "fare_attributes",
-          "fare_id",
-          "character"
-        )
-        gtfs$fare_attributes <- gtfs$fare_attributes[
-          fare_id %chin% relevant_fares
-        ]
-
-        # 'fare_attributes' allows us to filter by 'agency_id'. again,
-        # 'agency_id' is conditionally required, which means that it may not be
-        # listed if 'agency' has only one row.
-
-        relevant_agencies_fare_att <- unique(gtfs$fare_attributes$agency_id)
-
-        if (is.null(relevant_agencies_fare_att))
-          relevant_agencies_fare_att <- unique(gtfs$agency$agency_id)
-
-        relevant_agencies <- c(relevant_agencies, relevant_agencies_fare_att)
-
-      }
-
-    }
-
-    # 'agency' (agency_id, that comes both from routes and fare_attributes)
-
-    if (gtfsio::check_field_exists(gtfs, "agency", "agency_id") &&
-        exists("relevant_agencies")) {
-
-      # keeping only unique agency_ids from relevant_agencies, since they may
-      # come from two different sources
-      relevant_agencies <- unique(relevant_agencies)
-
-      gtfsio::assert_field_class(gtfs, "agency", "agency_id", "character")
-      gtfs$agency <- gtfs$agency[agency_id %chin% relevant_agencies]
-
-    }
-
-    # 'frequencies' and 'stop_times' (trip_id)
-
-    if (gtfsio::check_field_exists(gtfs, "frequencies", "trip_id")) {
-
-      gtfsio::assert_field_class(gtfs, "frequencies", "trip_id", "character")
-      gtfs$frequencies <- gtfs$frequencies[trip_id %chin% relevant_trips]
-
-    }
-
-    if (gtfsio::check_field_exists(gtfs, "stop_times", "trip_id")) {
-
-      gtfsio::assert_field_class(gtfs, "stop_times", "trip_id", "character")
-      gtfs$stop_times <- gtfs$stop_times[trip_id %chin% relevant_trips]
-
-      # 'stop_times' allows us to filter by 'stop_id'. it's important to keep,
-      # however, not only the stops that appear on stop_times, but also their
-      # parent stops, that may not be listed on such file
-
-      relevant_stops <- unique(gtfs$stop_times$stop_id)
-
-      if (gtfsio::check_field_exists(gtfs, "stops", "parent_station")) {
-
-        # this may result in a warning if stop_times has stop_ids not listed in
-        # stops
-        suppressWarnings(
-          stops_with_parents <- get_parent_station(gtfs, relevant_stops)
-        )
-        relevant_stops <- stops_with_parents$stop_id
-
-      }
-
-      # 'stops', 'transfers' and 'pathways' (stop_id)
-
-      from_to_stop_id <- c("from_stop_id", "to_stop_id")
-
-      if (gtfsio::check_field_exists(gtfs, "transfers", from_to_stop_id)) {
-
-        gtfsio::assert_field_class(
-          gtfs,
-          "transfers",
-          from_to_stop_id,
-          rep("character", 2)
-        )
-        gtfs$transfers <- gtfs$transfers[
-          from_stop_id %chin% relevant_stops & to_stop_id %chin% relevant_stops
-        ]
-
-      }
-
-      if (gtfsio::check_field_exists(gtfs, "pathways", from_to_stop_id)) {
-
-        gtfsio::assert_field_class(
-          gtfs,
-          "pathways",
-          from_to_stop_id,
-          rep("character", 2)
-        )
-        gtfs$pathways <- gtfs$pathways[
-          from_stop_id %chin% relevant_stops & to_stop_id %chin% relevant_stops
-        ]
-
-      }
-
-      if (gtfsio::check_field_exists(gtfs, "stops", "stop_id")) {
-
-        gtfsio::assert_field_class(gtfs, "stops", "stop_id", "character")
-        gtfs$stops <- gtfs$stops[stop_id %chin% relevant_stops]
-
-        # 'stops' allows us to filter by 'level_id'
-
-        relevant_levels <- unique(gtfs$stops$level_id)
-
-        # 'levels' (level_id)
-
-        if (gtfsio::check_field_exists(gtfs, "levels", "level_id")) {
-
-          gtfsio::assert_field_class(gtfs, "levels", "level_id", "character")
-          gtfs$levels <- gtfs$levels[level_id %chin% relevant_levels]
-
-        }
-
-      }
-
-    }
-
-  }
+  gtfs <- filter_levels_from_level_id(gtfs, relevant_levels, `%chin%`)
 
   return(gtfs)
-
 }

@@ -62,7 +62,7 @@ set_trip_speed <- function(gtfs,
                            by_reference = FALSE) {
   env <- environment()
 
-  checkmate::assert_class(gtfs, "dt_gtfs")
+  gtfs <- assert_and_assign_gtfs_object(gtfs)
   checkmate::assert_character(trip_id, any.missing = FALSE)
   checkmate::assert(
     checkmate::check_number(speed),
@@ -169,6 +169,7 @@ set_trip_speed <- function(gtfs,
   last_arrival  <- first_departure[trip_length_ids] +
     trip_duration_secs[trip_length_ids]
   last_arrival  <- seconds_to_string(last_arrival)
+  names(last_arrival) <- trip_length_ids
 
   stop_times[
     max_stops_index,

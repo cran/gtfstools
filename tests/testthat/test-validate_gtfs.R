@@ -2,6 +2,8 @@ testthat::skip_if_offline() # calls skip_on_cran()
 
 available_versions <- c(
   "latest",
+  "4.2.0",
+  "4.1.0",
   "4.0.0",
   "3.1.1",
   "3.1.0",
@@ -12,6 +14,7 @@ available_versions <- c(
 data_path <- system.file("extdata/spo_gtfs.zip", package = "gtfstools")
 gtfs_url <- "https://github.com/ipeaGIT/gtfstools/raw/master/inst/extdata/spo_gtfs.zip"
 gtfs <- read_gtfs(data_path, encoding = "UTF-8")
+gtfsio_gtfs <- gtfsio::import_gtfs(data_path, encoding = "UTF-8")
 gtfs_dir <- tempfile("gtfs")
 
 write_gtfs(gtfs, gtfs_dir, as_dir = TRUE)
@@ -26,7 +29,7 @@ tester <- function(gtfs = data_path,
                    html_preview = TRUE,
                    pretty_json = FALSE,
                    quiet = TRUE,
-                   n_threads = 2) {
+                   n_threads = 1) {
   validate_gtfs(
     gtfs,
     output_path,
@@ -75,7 +78,6 @@ test_that("raises error due to incorrect input", {
 
   expect_error(tester(n_threads = "1"))
   expect_error(tester(n_threads = 0))
-  expect_error(tester(n_threads = parallel::detectCores() + 1))
   expect_error(tester(n_threads = Inf))
   expect_error(tester(n_threads = c(1, 1)))
 })
@@ -136,11 +138,21 @@ validation_works <- function(input,
 get_result_json <- function(validation_dir) {
   json_report_path <- file.path(validation_dir, "report.json")
   json_report <- jsonlite::fromJSON(json_report_path)
+
+  # validator v4.2.0 introduces three summary fields that vary based on the
+  # validation time, output directory and input file. we remove these just to
+  # make sure we are comparing the actual validation content
+
+  json_report$summary$validatedAt <- NULL
+  json_report$summary$gtfsInput <- NULL
+  json_report$summary$outputDirectory <- NULL
+
   return(json_report)
 }
 
 test_that("works with the 4 types of input (url, path, dir, object)", {
   obj_dir <- validation_works(gtfs)
+  gtfsio_obj_dir <- validation_works(gtfsio_gtfs)
   path_dir <- validation_works(data_path)
   url_dir <- validation_works(gtfs_url)
   dir_dir <- validation_works(gtfs_dir)
@@ -150,10 +162,12 @@ test_that("works with the 4 types of input (url, path, dir, object)", {
 
   if (requireNamespace("jsonlite", quietly = TRUE)) {
     obj_result <- get_result_json(obj_dir)
+    gtfsio_obj_result <- get_result_json(gtfsio_obj_dir)
     path_result <- get_result_json(path_dir)
     url_result <- get_result_json(url_dir)
     dir_result <- get_result_json(dir_dir)
 
+    expect_identical(obj_result, gtfsio_obj_result)
     expect_identical(obj_result, path_result)
     expect_identical(obj_result, url_result)
 
@@ -221,7 +235,11 @@ test_that("quiet arg works correctly", {
   expect_silent(tester(gtfs_url, quiet = TRUE, html_preview = FALSE))
   expect_silent(tester(gtfs_dir, quiet = TRUE, html_preview = FALSE))
 
-  expect_message(tester(gtfs, quiet = FALSE, html_preview = FALSE))
+  # testthat edition 3 only captures one message, so suppress the additional
+  # ones
+  suppressMessages(
+    expect_message(tester(gtfs, quiet = FALSE, html_preview = FALSE))
+  )
   expect_message(tester(data_path, quiet = FALSE, html_preview = FALSE))
   capture.output(
     expect_message(tester(gtfs_url, quiet = FALSE, html_preview = FALSE)),

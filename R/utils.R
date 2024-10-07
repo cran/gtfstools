@@ -28,22 +28,11 @@ string_to_seconds <- function(string) {
 #'
 #' @keywords internal
 seconds_to_string <- function(seconds) {
+  checkmate::assert_integer(seconds, lower = 0)
 
-  checkmate::assert_integer(seconds)
-
-  time_string <- data.table::fifelse(
-    is.na(seconds),
-    "",
-    paste(
-      formatC(seconds %/% 3600, width = 2, format = "d", flag = 0),
-      formatC((seconds %% 3600) %/% 60, width = 2, format = "d", flag = 0),
-      formatC((seconds %% 3600) %% 60, width = 2, format = "d", flag = 0),
-      sep = ":"
-    )
-  )
+  time_string <- cpp_seconds_to_string(seconds)
 
   return(time_string)
-
 }
 
 
@@ -60,7 +49,7 @@ seconds_to_string <- function(seconds) {
 #' @keywords internal
 copy_gtfs_without_file <- function(gtfs, file) {
 
-  checkmate::assert_class(gtfs, "dt_gtfs")
+  gtfs <- assert_and_assign_gtfs_object(gtfs)
   checkmate::assert_string(file)
 
   # check if file exists
@@ -92,7 +81,7 @@ copy_gtfs_without_file <- function(gtfs, file) {
 #' @keywords internal
 copy_gtfs_without_field <- function(gtfs, file, field) {
 
-  checkmate::assert_class(gtfs, "dt_gtfs")
+  gtfs <- assert_and_assign_gtfs_object(gtfs)
   checkmate::assert_string(file)
   checkmate::assert_string(field)
 
@@ -127,7 +116,7 @@ copy_gtfs_without_field <- function(gtfs, file, field) {
 #' @keywords internal
 copy_gtfs_diff_field_class <- function(gtfs, file, field, class) {
 
-  checkmate::assert_class(gtfs, "dt_gtfs")
+  gtfs <- assert_and_assign_gtfs_object(gtfs)
   checkmate::assert_string(file)
   checkmate::assert_string(field)
   checkmate::assert_string(class)
@@ -151,4 +140,15 @@ copy_gtfs_diff_field_class <- function(gtfs, file, field, class) {
 
   return(gtfs_copy)
 
+}
+
+
+
+#' @keywords internal
+assert_and_assign_gtfs_object <- function(gtfs) {
+  checkmate::assert_class(gtfs, "gtfs")
+
+  if (!inherits(gtfs, "dt_gtfs")) gtfs <- as_dt_gtfs(gtfs)
+
+  return(gtfs)
 }

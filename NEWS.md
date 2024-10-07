@@ -1,3 +1,64 @@
+# gtfstools 1.3.0
+
+## New features
+
+- New function `convert_sf_to_shapes()`.
+- New generic function `as_dt_gtfs()` with methods for a few different classes
+  (`tidygtfs`, `gtfs` and `list`).
+- `{gtfstools}` functions now accepts GTFS objects created by other packages,
+  such as `{gtfsio}` and `{tidytransit}`.
+- `filter_by_route_type()` now accepts Google Transit's [extended route
+  types](https://developers.google.com/transit/gtfs/reference/extended-route-types).
+  Thanks @Ge-Rag.
+- `convert_shapes_to_sf()`, `get_trip_geometry()`, `get_trip_length()`,
+  `get_trip_speed()`, `get_trip_segment_duration()` and
+  `get_stop_times_patterns()` now take an additional argument `sort_sequence`,
+  used to indicate whether shapes/timetables should be ordered by
+  `shape_pt_sequence`/`stop_sequence` when applying the functions' procedures.
+- `download_validator()` and `validate_gtfs()` now support using validator
+  v4.1.0 and v4.2.0.
+- New parameters to `filter_by_stop_id()`: `include_children` and
+  `include_parents`.
+
+## Bug fixes
+
+- Fixed a bug in `convert_to_standard()` in which the date fields from
+  `feed_info` would not be converted back to an integer in their standard
+  format (YYYYMMDD).
+- Filtering functions now also filter the `transfers` table based on `trip_id`
+  and `route_id`. Previously they would filter it based only on `stop_id`.
+  Thanks Daniel Langbein (@langbein-daniel).
+- Fixed a bug in `filter_by_route_id()` in which feeds with only one agency
+  that omitted `agency_id` in `routes` and `fare_attributes` would end up with
+  an empty `agency` table.
+- `filter_by_sf()` now correctly throws an error when an unsupported function
+  is passed to `spatial_operation`.
+
+## Feature deprecation
+
+- The `filter_by_stop_id()` behavior of filtering by trips that contain the
+  specified stops has been deprecated. For backwards compatibility reasons,
+  this behavior is still the default as of the current version and is
+  controlled by the parameter `full_trips`. To actually filter by stop ids (the
+  behavior that we now believe is the most appropriate), please use `full_trips
+  = FALSE`. This behavior will be the default from version 2.0.0 onward. To
+  achieve the old behavior, manually subset the stop_times table by `stop_id`
+  and specify the `trip_id`s included in the output in `filter_by_trip_id()`.
+- `filter_by_sf()` has been deprecated in favor of
+  `filter_by_spatial_extent()`. For backwards compatibility reasons, usage of
+  `filter_by_sf()` is still allowed as of the curent version, but the function
+  will be removed from the package in version 2.0.0.
+
+## Notes
+
+- `validate_gtfs()` now defaults to run sequentially. Previously it would
+  default to run parallelly using all available cores. Heavily inspired by
+  Henrik Bengtsson post "Please Avoid detectCores() in your R packages"
+  (https://www.jottr.org/2022/12/05/avoid-detectcores/).
+- Improved performance of `seconds_to_string()` and, consequently, any other
+  functions that use it.
+- Improved performance and improved readability of most filtering functions.
+
 # gtfstools 1.2.0
 
 ## New features

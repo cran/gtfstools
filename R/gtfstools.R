@@ -93,6 +93,15 @@ utils::globalVariables(
     "data",
     "template_departure",
     "template_arrival",
-    "origin_gtfs"
+    "origin_gtfs",
+    "feed_start_date",
+    "feed_end_date",
+    "dist_to_prev_point",
+    "shape_dist_traveled",
+    "from_route_id",
+    "to_route_id",
+    "from_trip_id",
+    "to_trip_id",
+    ".flagged"
   )
 )
