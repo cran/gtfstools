@@ -1,7 +1,10 @@
-testthat::skip_if_offline() # calls skip_on_cran()
+testthat::skip() # calls skip_on_cran()
 
 available_versions <- c(
   "latest",
+  "6.0.0",
+  "5.0.1",
+  "5.0.0",
   "4.2.0",
   "4.1.0",
   "4.0.0",
@@ -12,7 +15,7 @@ available_versions <- c(
 )
 
 data_path <- system.file("extdata/spo_gtfs.zip", package = "gtfstools")
-gtfs_url <- "https://github.com/ipeaGIT/gtfstools/raw/master/inst/extdata/spo_gtfs.zip"
+gtfs_url <- "https://github.com/ipeaGIT/gtfstools/raw/main/inst/extdata/spo_gtfs.zip"
 gtfs <- read_gtfs(data_path, encoding = "UTF-8")
 gtfsio_gtfs <- gtfsio::import_gtfs(data_path, encoding = "UTF-8")
 gtfs_dir <- tempfile("gtfs")
@@ -146,6 +149,12 @@ get_result_json <- function(validation_dir) {
   json_report$summary$validatedAt <- NULL
   json_report$summary$gtfsInput <- NULL
   json_report$summary$outputDirectory <- NULL
+
+  # we also remove memory usage records and validation processing time,
+  # introduced in v6.0.0
+
+  json_report$summary$memoryUsageRecords <- NULL
+  json_report$summary$validationTimeSeconds <- NULL
 
   return(json_report)
 }

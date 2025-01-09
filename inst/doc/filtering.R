@@ -3,6 +3,9 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
+
+Sys.setenv(OMP_THREAD_LIMIT = 2)
+
 library(gtfstools)
 
 ## ----message = FALSE, eval = requireNamespace("ggplot2", quietly = TRUE)------

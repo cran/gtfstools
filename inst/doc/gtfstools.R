@@ -4,15 +4,17 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 
-## ----eval = FALSE-------------------------------------------------------------
-#  install.packages("gtfstools")
+Sys.setenv(OMP_THREAD_LIMIT = 2)
 
 ## ----eval = FALSE-------------------------------------------------------------
-#  install.packages("gtfstools", repos = "https://dhersz.r-universe.dev")
-#  
-#  # or
-#  # install.packages("remotes")
-#  remotes::install_github("ipeaGIT/gtfstools")
+# install.packages("gtfstools")
+
+## ----eval = FALSE-------------------------------------------------------------
+# install.packages("gtfstools", repos = "https://dhersz.r-universe.dev")
+# 
+# # or
+# # install.packages("remotes")
+# remotes::install_github("ipeaGIT/gtfstools")
 
 ## ----message = FALSE----------------------------------------------------------
 library(gtfstools)

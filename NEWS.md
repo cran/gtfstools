@@ -1,3 +1,15 @@
+# gtfstools 1.4.0
+
+## New features
+
+- `download_validator()` and `validate_gtfs()` now support using validator
+  v5.0.0, v5.0.1 and v6.0.0.
+
+## Notes
+
+- Removed the local copies of `{cpp11}` functions, as the most recent releases
+  fix the issues we were having.
+
 # gtfstools 1.3.0
 
 ## New features

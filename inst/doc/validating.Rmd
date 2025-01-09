@@ -14,6 +14,8 @@ knitr::opts_chunk$set(
   eval = identical(tolower(Sys.getenv("NOT_CRAN")), "true"),
   out.width = "100%"
 )
+
+Sys.setenv(OMP_THREAD_LIMIT = 2)
 ```
 
 Transport planners and researchers very frequently want to assess the quality
@@ -94,7 +96,7 @@ Had we run the validator using the same GTFS data in different formats (an URL
 or a GTFS object, for example) the results would be exactly the same:
 
 ```{r}
-gtfs_url <- "https://github.com/ipeaGIT/gtfstools/raw/master/inst/extdata/spo_gtfs.zip"
+gtfs_url <- "https://github.com/ipeaGIT/gtfstools/raw/main/inst/extdata/spo_gtfs.zip"
 gtfs <- read_gtfs(data_path)
 
 url_output_dir <- tempfile("validation_from_url")
