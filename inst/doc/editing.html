@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>Editing GTFS feeds</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Editing GTFS feeds</h1>
+
+
+
+<p>GTFS feeds describe the transit services of a city or region as they
+are. Quite often, however, one wants to analyze how things would be if
+they were different: what if a bus route ran more frequently, or if a
+rail line were faster? Answering such questions requires editing the
+feed, changing its service levels, travel times or the way its schedules
+are described, and then feeding the result to routing and accessibility
+tools.</p>
+<p><strong>gtfstools</strong> includes several functions to edit GTFS
+feeds. The editing functions currently available are:</p>
+<ul>
+<li><code>set_route_frequency()</code>: sets the headway of routes
+within a time of day;</li>
+<li><code>set_trip_speed()</code>: sets the average speed of trips, or
+of a segment of them;</li>
+<li><code>stop_times_to_frequencies()</code>: approximates scheduled
+trips by frequency-based ones;</li>
+<li><code>interpolate_stop_times()</code>: fills blank stop times,
+assuming a constant speed between stops with known times;</li>
+<li><code>interpolate_shape_dist_traveled()</code>: calculates the
+distances, in meters, travelled along the shapes up to each stop and
+shape point, replacing any existing ones;</li>
+<li><code>set_route_speed()</code>: sets the average speed of the trips
+of routes, or of a segment of them;</li>
+<li><code>set_max_speed()</code>: caps the speed of trips, slowing down
+only the parts that are faster than a maximum speed;</li>
+<li><code>set_dwell_time()</code>: sets how long vehicles stay at
+stops;</li>
+<li><code>frequencies_to_stop_times()</code>: converts frequency-based
+trips into scheduled ones;</li>
+<li><code>merge_gtfs()</code>: combines several feeds into a single
+one;</li>
+<li><code>remove_duplicates()</code>: removes duplicated entries from
+the feed’s tables;</li>
+<li><code>remove_unused_ids()</code>: removes the ids that the feed
+doesn’t use, with their entries in every table;</li>
+<li><code>fix_gtfs()</code>: cleans a feed in one call, removing
+duplicated entries and unused ids, optionally capping the speed of
+trips, filling blank stop times, optionally setting a minimum dwell time
+at intermediate stops and recalculating the distances travelled along
+shapes (replacing any existing ones).</li>
+</ul>
+<p>This vignette will introduce you to the first four functions and to
+<code>fix_gtfs()</code>, and will cover their usage in detail. By
+default, they return an edited copy of the feed and leave the given GTFS
+object unchanged.</p>
+<p>We will start by loading the packages required by this demonstration
+into the current <strong>R</strong> session:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(gtfstools)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span></code></pre></div>
+<div id="setting-route-frequencies" class="section level1">
+<h1>Setting route frequencies</h1>
+<p>The number of departures of a route is one of the main levers of a
+transit network, and one that is frequently changed in scenario
+analyses. <code>get_route_frequency()</code> tells us how many
+departures each route has within a time of day, and its mean headway.
+Let’s see how frequently the route <code>T2</code> of Porto Alegre’s
+feed runs during the morning peak:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>path <span class="ot">&lt;-</span> <span class="fu">system.file</span>(<span class="st">&quot;extdata/poa_gtfs.zip&quot;</span>, <span class="at">package =</span> <span class="st">&quot;gtfstools&quot;</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>gtfs <span class="ot">&lt;-</span> <span class="fu">read_gtfs</span>(path)</span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="fu">get_route_frequency</span>(</span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a>  gtfs,</span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>  <span class="at">route_id =</span> <span class="st">&quot;T2&quot;</span>,</span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>  <span class="at">from =</span> <span class="st">&quot;07:00:00&quot;</span>,</span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a>  <span class="at">to =</span> <span class="st">&quot;09:00:00&quot;</span></span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a>)</span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a><span class="co">#&gt; Key: &lt;route_id, direction_id, service_id&gt;</span></span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a><span class="co">#&gt;    route_id direction_id service_id departures mean_headway</span></span>
+<span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a><span class="co">#&gt;      &lt;char&gt;        &lt;int&gt;     &lt;char&gt;      &lt;int&gt;        &lt;num&gt;</span></span>
+<span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a><span class="co">#&gt; 1:       T2            0       T2@1         17     7.058824</span></span>
+<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a><span class="co">#&gt; 2:       T2            0       T2@2          8    15.000000</span></span>
+<span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a><span class="co">#&gt; 3:       T2            0       T2@5          5    24.000000</span></span></code></pre></div>
+<p>The route runs on three different services (<code>T2@1</code> on
+weekdays, for example), each with a different headway.
+<code>set_route_frequency()</code> sets a single headway, in minutes, to
+all of them. Let’s say we want the route to run every 10 minutes from 7
+to 9 am:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>new_gtfs <span class="ot">&lt;-</span> <span class="fu">set_route_frequency</span>(</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>  gtfs,</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  <span class="at">route_id =</span> <span class="st">&quot;T2&quot;</span>,</span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>  <span class="at">headway =</span> <span class="dv">10</span>,</span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>  <span class="at">from =</span> <span class="st">&quot;07:00:00&quot;</span>,</span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>  <span class="at">to =</span> <span class="st">&quot;09:00:00&quot;</span></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>)</span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a></span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a><span class="fu">get_route_frequency</span>(</span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>  new_gtfs,</span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a>  <span class="at">route_id =</span> <span class="st">&quot;T2&quot;</span>,</span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a>  <span class="at">from =</span> <span class="st">&quot;07:00:00&quot;</span>,</span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a>  <span class="at">to =</span> <span class="st">&quot;09:00:00&quot;</span></span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a>)</span>
+<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a><span class="co">#&gt; Key: &lt;route_id, direction_id, service_id&gt;</span></span>
+<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a><span class="co">#&gt;    route_id direction_id service_id departures mean_headway</span></span>
+<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a><span class="co">#&gt;      &lt;char&gt;        &lt;int&gt;     &lt;char&gt;      &lt;int&gt;        &lt;num&gt;</span></span>
+<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a><span class="co">#&gt; 1:       T2            0       T2@1         12           10</span></span>
+<span id="cb3-19"><a href="#cb3-19" tabindex="-1"></a><span class="co">#&gt; 2:       T2            0       T2@2         12           10</span></span>
+<span id="cb3-20"><a href="#cb3-20" tabindex="-1"></a><span class="co">#&gt; 3:       T2            0       T2@5         12           10</span></span>
+<span id="cb3-21"><a href="#cb3-21" tabindex="-1"></a></span>
+<span id="cb3-22"><a href="#cb3-22" tabindex="-1"></a>new_gtfs<span class="sc">$</span>frequencies</span>
+<span id="cb3-23"><a href="#cb3-23" tabindex="-1"></a><span class="co">#&gt; Index: &lt;trip_id&gt;</span></span>
+<span id="cb3-24"><a href="#cb3-24" tabindex="-1"></a><span class="co">#&gt;       trip_id start_time end_time headway_secs exact_times</span></span>
+<span id="cb3-25"><a href="#cb3-25" tabindex="-1"></a><span class="co">#&gt;        &lt;char&gt;     &lt;char&gt;   &lt;char&gt;        &lt;int&gt;       &lt;int&gt;</span></span>
+<span id="cb3-26"><a href="#cb3-26" tabindex="-1"></a><span class="co">#&gt; 1: T2-1@1#702   07:00:00 09:00:00          600           0</span></span>
+<span id="cb3-27"><a href="#cb3-27" tabindex="-1"></a><span class="co">#&gt; 2: T2-1@2#701   07:00:00 09:00:00          600           0</span></span>
+<span id="cb3-28"><a href="#cb3-28" tabindex="-1"></a><span class="co">#&gt; 3: T2-1@5#701   07:00:00 09:00:00          600           0</span></span></code></pre></div>
+<p>Under the hood, the function replaces the trips that depart within
+the time of day by a single template trip per service (and per
+direction, when <code>direction_id</code> is present in
+<code>trips</code>), taken from its most common sequence of stops. The
+departures of the template are described in the <code>frequencies</code>
+table. Since this feed had no <code>frequencies</code> table, one has
+been created. The template keeps its travel times between stops, which
+apply to all of the new departures. Departures outside the time of day
+are kept as before. Please note that departures after midnight are
+listed with times greater than <code>&quot;24:00:00&quot;</code>, so a time of day
+such as <code>&quot;24:00:00&quot;</code>-<code>&quot;26:00:00&quot;</code> should be used
+for them.</p>
+<p>The trips removed by the function may leave unused entries in other
+tables, such as <code>shapes</code> and <code>calendar</code>, which can
+be removed with <code>remove_unused_ids()</code>. If your routing
+software doesn’t support frequency-based trips,
+<code>frequencies_to_stop_times()</code> converts them back into
+scheduled trips.</p>
+</div>
+<div id="setting-trip-speeds" class="section level1">
+<h1>Setting trip speeds</h1>
+<p><code>set_trip_speed()</code> sets the average speed of trips by
+changing the <code>arrival_time</code> and <code>departure_time</code>
+columns in the <code>stop_times</code> table. Let’s see how that works
+using the trip <code>CPTM L07-0</code> of São Paulo’s feed. This trip is
+described in the <code>frequencies</code> table, so its times are just a
+“template” that describes how long it takes from one stop to another,
+relative to each of its departures.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>path <span class="ot">&lt;-</span> <span class="fu">system.file</span>(<span class="st">&quot;extdata/spo_gtfs.zip&quot;</span>, <span class="at">package =</span> <span class="st">&quot;gtfstools&quot;</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>spo_gtfs <span class="ot">&lt;-</span> <span class="fu">read_gtfs</span>(path)</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="fu">get_trip_speed</span>(spo_gtfs, <span class="at">trip_id =</span> <span class="st">&quot;CPTM L07-0&quot;</span>)</span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="co">#&gt; Key: &lt;trip_id&gt;</span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="co">#&gt;    route_id    trip_id    speed</span></span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="co">#&gt;      &lt;char&gt;     &lt;char&gt;    &lt;num&gt;</span></span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="co">#&gt; 1: CPTM L07 CPTM L07-0 26.73002</span></span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a></span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a><span class="co"># &#39;unit&#39; argument defaults to &quot;km/h&quot;</span></span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a>new_speed_gtfs <span class="ot">&lt;-</span> <span class="fu">set_trip_speed</span>(spo_gtfs, <span class="at">trip_id =</span> <span class="st">&quot;CPTM L07-0&quot;</span>, <span class="at">speed =</span> <span class="dv">50</span>)</span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a></span>
+<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a><span class="fu">get_trip_speed</span>(new_speed_gtfs, <span class="at">trip_id =</span> <span class="st">&quot;CPTM L07-0&quot;</span>)</span>
+<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a><span class="co">#&gt; Key: &lt;trip_id&gt;</span></span>
+<span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a><span class="co">#&gt;    route_id    trip_id    speed</span></span>
+<span id="cb4-16"><a href="#cb4-16" tabindex="-1"></a><span class="co">#&gt;      &lt;char&gt;     &lt;char&gt;    &lt;num&gt;</span></span>
+<span id="cb4-17"><a href="#cb4-17" tabindex="-1"></a><span class="co">#&gt; 1: CPTM L07 CPTM L07-0 50.00388</span></span>
+<span id="cb4-18"><a href="#cb4-18" tabindex="-1"></a></span>
+<span id="cb4-19"><a href="#cb4-19" tabindex="-1"></a>new_speed_gtfs<span class="sc">$</span>stop_times <span class="sc">|&gt;</span></span>
+<span id="cb4-20"><a href="#cb4-20" tabindex="-1"></a>  <span class="fu">filter</span>(trip_id <span class="sc">==</span> <span class="st">&quot;CPTM L07-0&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb4-21"><a href="#cb4-21" tabindex="-1"></a>  <span class="fu">select</span>(stop_id, stop_sequence, arrival_time, departure_time)</span>
+<span id="cb4-22"><a href="#cb4-22" tabindex="-1"></a><span class="co">#&gt; Index: &lt;trip_id&gt;</span></span>
+<span id="cb4-23"><a href="#cb4-23" tabindex="-1"></a><span class="co">#&gt;     stop_id stop_sequence arrival_time departure_time</span></span>
+<span id="cb4-24"><a href="#cb4-24" tabindex="-1"></a><span class="co">#&gt;      &lt;char&gt;         &lt;int&gt;       &lt;char&gt;         &lt;char&gt;</span></span>
+<span id="cb4-25"><a href="#cb4-25" tabindex="-1"></a><span class="co">#&gt;  1:   18940             1     04:00:00       04:00:00</span></span>
+<span id="cb4-26"><a href="#cb4-26" tabindex="-1"></a><span class="co">#&gt;  2:   18920             2                            </span></span>
+<span id="cb4-27"><a href="#cb4-27" tabindex="-1"></a><span class="co">#&gt;  3:   18919             3                            </span></span>
+<span id="cb4-28"><a href="#cb4-28" tabindex="-1"></a><span class="co">#&gt;  4:   18917             4                            </span></span>
+<span id="cb4-29"><a href="#cb4-29" tabindex="-1"></a><span class="co">#&gt;  5:   18916             5                            </span></span>
+<span id="cb4-30"><a href="#cb4-30" tabindex="-1"></a><span class="co">#&gt;  6:   18965             6                            </span></span>
+<span id="cb4-31"><a href="#cb4-31" tabindex="-1"></a><span class="co">#&gt;  7:   18923             7                            </span></span>
+<span id="cb4-32"><a href="#cb4-32" tabindex="-1"></a><span class="co">#&gt;  8:   18922             8                            </span></span>
+<span id="cb4-33"><a href="#cb4-33" tabindex="-1"></a><span class="co">#&gt;  9: 4114459             9                            </span></span>
+<span id="cb4-34"><a href="#cb4-34" tabindex="-1"></a><span class="co">#&gt; 10:   18921            10                            </span></span>
+<span id="cb4-35"><a href="#cb4-35" tabindex="-1"></a><span class="co">#&gt; 11:   18924            11                            </span></span>
+<span id="cb4-36"><a href="#cb4-36" tabindex="-1"></a><span class="co">#&gt; 12:   18925            12                            </span></span>
+<span id="cb4-37"><a href="#cb4-37" tabindex="-1"></a><span class="co">#&gt; 13:   18926            13                            </span></span>
+<span id="cb4-38"><a href="#cb4-38" tabindex="-1"></a><span class="co">#&gt; 14:   18971            14                            </span></span>
+<span id="cb4-39"><a href="#cb4-39" tabindex="-1"></a><span class="co">#&gt; 15:   18972            15                            </span></span>
+<span id="cb4-40"><a href="#cb4-40" tabindex="-1"></a><span class="co">#&gt; 16:   18973            16                            </span></span>
+<span id="cb4-41"><a href="#cb4-41" tabindex="-1"></a><span class="co">#&gt; 17:   18974            17                            </span></span>
+<span id="cb4-42"><a href="#cb4-42" tabindex="-1"></a><span class="co">#&gt; 18:   18975            18     05:12:42       05:12:42</span></span></code></pre></div>
+<p>The duration of the trip is set to its length, measured along its
+shape, divided by the given speed. <code>set_trip_speed()</code> updates
+the arrival time at the last stop accordingly and sets the arrival and
+departure times at intermediate stops to <code>&quot;&quot;</code>. To fill in the
+expected arrival and departure times of intermediate stops, you use
+<code>interpolate_stop_times()</code>, as we’ll see in a <a href="#interpolating-stop-times">later section</a>.</p>
+<p>The <code>set_trip_speed()</code> function also includes a few other
+arguments that control which trips and parts of trips are changed:</p>
+<ul>
+<li><code>unit</code> sets the unit in which the speed is given, either
+<code>&quot;km/h&quot;</code> (the default), <code>&quot;m/s&quot;</code> or
+<code>&quot;mph&quot;</code>;</li>
+<li><code>first_stop</code> and <code>last_stop</code> set the speed of
+only a segment of the trips, between two stops. The times at the stops
+after the segment are shifted by the change in its duration;</li>
+<li><code>from</code> and <code>to</code> only change the trips that
+depart from the segment’s first stop between <code>from</code>
+“HH:MM:SS” and <code>to</code> “HH:MM:SS” (both included);</li>
+<li><code>by_reference = TRUE</code> updates the <code>stop_times</code>
+table by reference, thus changing the given GTFS object.</li>
+</ul>
+</div>
+<div id="converting-stop-times-to-frequencies" class="section level1">
+<h1>Converting stop times to frequencies</h1>
+<p>Some routing engines and other tools treat frequency-based trips
+differently from scheduled ones. For example, the
+<code>time_window</code> parameter of <a href="https://ipea.github.io/r5r/"><code>{r5r}</code></a> draws
+departure times within the headways of frequency-based trips.
+<code>stop_times_to_frequencies()</code> converts scheduled trips,
+described only in <code>stop_times</code>, into frequency-based trips,
+described in <code>frequencies</code>. Let’s convert all the trips of
+Porto Alegre’s feed:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>converted_gtfs <span class="ot">&lt;-</span> <span class="fu">stop_times_to_frequencies</span>(gtfs)</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="fu">nrow</span>(gtfs<span class="sc">$</span>trips)</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co">#&gt; [1] 387</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="fu">nrow</span>(converted_gtfs<span class="sc">$</span>trips)</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="co">#&gt; [1] 157</span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="co"># frequencies of route T2 on weekdays, from 6 to 10 am</span></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>converted_gtfs<span class="sc">$</span>frequencies <span class="sc">|&gt;</span></span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>  <span class="fu">filter</span>(</span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a>    <span class="fu">startsWith</span>(trip_id, <span class="st">&quot;T2-1@1#&quot;</span>),</span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a>    start_time <span class="sc">&gt;=</span> <span class="st">&quot;06:00:00&quot;</span>,</span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a>    start_time <span class="sc">&lt;</span> <span class="st">&quot;10:00:00&quot;</span></span>
+<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a>  )</span>
+<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a><span class="co">#&gt;       trip_id start_time end_time headway_secs exact_times</span></span>
+<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a><span class="co">#&gt;        &lt;char&gt;     &lt;char&gt;   &lt;char&gt;        &lt;int&gt;       &lt;int&gt;</span></span>
+<span id="cb5-17"><a href="#cb5-17" tabindex="-1"></a><span class="co">#&gt; 1: T2-1@1#610   06:00:00 07:00:00          515           0</span></span>
+<span id="cb5-18"><a href="#cb5-18" tabindex="-1"></a><span class="co">#&gt; 2: T2-1@1#702   07:00:00 08:00:00          400           0</span></span>
+<span id="cb5-19"><a href="#cb5-19" tabindex="-1"></a><span class="co">#&gt; 3: T2-1@1#800   08:00:00 09:00:00          450           0</span></span>
+<span id="cb5-20"><a href="#cb5-20" tabindex="-1"></a><span class="co">#&gt; 4: T2-1@1#910   09:00:00 10:00:00          900           0</span></span>
+<span id="cb5-21"><a href="#cb5-21" tabindex="-1"></a></span>
+<span id="cb5-22"><a href="#cb5-22" tabindex="-1"></a><span class="co"># the number of departures of route T2 is kept</span></span>
+<span id="cb5-23"><a href="#cb5-23" tabindex="-1"></a><span class="fu">get_route_frequency</span>(</span>
+<span id="cb5-24"><a href="#cb5-24" tabindex="-1"></a>  converted_gtfs,</span>
+<span id="cb5-25"><a href="#cb5-25" tabindex="-1"></a>  <span class="at">route_id =</span> <span class="st">&quot;T2&quot;</span>,</span>
+<span id="cb5-26"><a href="#cb5-26" tabindex="-1"></a>  <span class="at">from =</span> <span class="st">&quot;07:00:00&quot;</span>,</span>
+<span id="cb5-27"><a href="#cb5-27" tabindex="-1"></a>  <span class="at">to =</span> <span class="st">&quot;09:00:00&quot;</span></span>
+<span id="cb5-28"><a href="#cb5-28" tabindex="-1"></a>)</span>
+<span id="cb5-29"><a href="#cb5-29" tabindex="-1"></a><span class="co">#&gt; Key: &lt;route_id, direction_id, service_id&gt;</span></span>
+<span id="cb5-30"><a href="#cb5-30" tabindex="-1"></a><span class="co">#&gt;    route_id direction_id service_id departures mean_headway</span></span>
+<span id="cb5-31"><a href="#cb5-31" tabindex="-1"></a><span class="co">#&gt;      &lt;char&gt;        &lt;int&gt;     &lt;char&gt;      &lt;int&gt;        &lt;num&gt;</span></span>
+<span id="cb5-32"><a href="#cb5-32" tabindex="-1"></a><span class="co">#&gt; 1:       T2            0       T2@1         17     7.058824</span></span>
+<span id="cb5-33"><a href="#cb5-33" tabindex="-1"></a><span class="co">#&gt; 2:       T2            0       T2@2          8    15.000000</span></span>
+<span id="cb5-34"><a href="#cb5-34" tabindex="-1"></a><span class="co">#&gt; 3:       T2            0       T2@5          5    24.000000</span></span></code></pre></div>
+<p>The trips that share the same route, service, direction, shape and
+sequence of stops are grouped together and split into one-hour slots of
+the clock, according to their earliest departure time. In each slot, the
+trip that departs first becomes a template trip, and a
+<code>frequencies</code> entry is added for it, from the start to the
+end of the slot, with a headway of <code>ceiling(3600 / n)</code>
+seconds, <code>n</code> being the number of trips in the slot (e.g. the
+9 trips of route <code>T2</code> that depart between 7 and 8 am on
+weekdays give a headway of 400 seconds). The other trip ids in the same
+template are removed from the <code>trips.txt</code> file, but it keeps
+the same number of departures.</p>
+<p>Please note that this is a lossy approximation of the original
+schedule: the exact departure times of the removed trips, their travel
+times and other fields in <code>trips</code>
+(e.g. <code>trip_headsign</code>) are lost. Converting the result back
+with <code>frequencies_to_stop_times()</code> yields the same number of
+trips in each slot (as long as it has at most 60 trips), but their
+departures are evenly spaced from the start of the slot. To convert only
+some trips, pass their ids to the <code>trip_id</code> argument.</p>
+</div>
+<div id="interpolating-stop-times" class="section level1">
+<h1>Interpolating stop times</h1>
+<p>Sometimes, GTFS feeds don’t report the arrival and departure times at
+every stop: only the times at the first and last stops of each trip are
+required, and the stops in between may be left blank. The stops with
+known times are called timepoints. In Porto Alegre’s feed, for example,
+only the first and last stops of each trip have times:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>trip <span class="ot">&lt;-</span> <span class="st">&quot;T2-1@1#520&quot;</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>gtfs<span class="sc">$</span>stop_times <span class="sc">|&gt;</span> </span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>  <span class="fu">filter</span>(trip_id <span class="sc">==</span> trip) <span class="sc">|&gt;</span> </span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>  <span class="fu">select</span>(stop_id, arrival_time, departure_time) <span class="sc">|&gt;</span> </span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>  <span class="fu">head</span>()</span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a><span class="co">#&gt;    stop_id arrival_time departure_time</span></span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a><span class="co">#&gt;     &lt;char&gt;       &lt;char&gt;         &lt;char&gt;</span></span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a><span class="co">#&gt; 1:    3609     05:20:00       05:20:00</span></span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a><span class="co">#&gt; 2:    3608                            </span></span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a><span class="co">#&gt; 3:    3564                            </span></span>
+<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a><span class="co">#&gt; 4:    6336                            </span></span>
+<span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a><span class="co">#&gt; 5:    3633                            </span></span>
+<span id="cb6-14"><a href="#cb6-14" tabindex="-1"></a><span class="co">#&gt; 6:    5544</span></span></code></pre></div>
+<p><code>interpolate_stop_times()</code> fills these blank times,
+assuming that the vehicle travels between two consecutive timepoints at
+a constant speed, with distances measured along the trip’s shape:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>interpolated_gtfs <span class="ot">&lt;-</span> <span class="fu">interpolate_stop_times</span>(gtfs, <span class="at">trip_id =</span> trip)</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a></span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>interpolated_gtfs<span class="sc">$</span>stop_times <span class="sc">|&gt;</span> </span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>  <span class="fu">filter</span>(trip_id <span class="sc">==</span> trip) <span class="sc">|&gt;</span> </span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>  <span class="fu">select</span>(stop_id, arrival_time, departure_time) <span class="sc">|&gt;</span> </span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>  <span class="fu">head</span>()</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="co">#&gt;    stop_id arrival_time departure_time</span></span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="co">#&gt;     &lt;char&gt;       &lt;char&gt;         &lt;char&gt;</span></span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="co">#&gt; 1:    3609     05:20:00       05:20:00</span></span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a><span class="co">#&gt; 2:    3608     05:20:27       05:20:27</span></span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a><span class="co">#&gt; 3:    3564     05:22:00       05:22:00</span></span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a><span class="co">#&gt; 4:    6336     05:24:02       05:24:02</span></span>
+<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a><span class="co">#&gt; 5:    3633     05:25:55       05:25:55</span></span>
+<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a><span class="co">#&gt; 6:    5544     05:26:31       05:26:31</span></span></code></pre></div>
+<p>Interpolated stops get equal arrival and departure times (i.e. no
+dwell time), rounded to the nearest second, and
+<code>timepoint = 0</code> when the <code>stop_times</code> table
+includes a <code>timepoint</code> column. In feeds without shapes, use
+<code>method = &quot;euclidean&quot;</code> to measure distances as straight lines
+between stops instead.</p>
+<p>If <code>trip_id</code> is not given, the function interpolates the
+data to give explicit stop times at every stop of every trip in the
+feed. Some stops may be left blank, with a warning: for example, a few
+trips of Porto Alegre’s feed list their times after midnight as
+<code>&quot;00:xx:xx&quot;</code>, instead of <code>&quot;24:xx:xx&quot;</code>, so they
+seem to arrive before they depart and can’t be interpolated.</p>
+</div>
+<div id="fixing-common-problems" class="section level1">
+<h1>Fixing common problems</h1>
+<p>GTFS feeds often come with small problems that get in the way of an
+analysis, such as duplicated entries, ids that no trip uses, blank stop
+times and missing distances travelled along shapes.
+<code>fix_gtfs()</code> fixes them in one call, chaining several of the
+functions listed above.</p>
+<p>In this example below, we fix Porto Alegre’s feed, capping maximum
+speeds to 25 Km/h and making vehicles stay at least 20 seconds at each
+intermediate stop for passengers to board and alight:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>fixed_gtfs <span class="ot">&lt;-</span> <span class="fu">fix_gtfs</span>(</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>  gtfs, </span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>  <span class="at">max_speed =</span> <span class="dv">25</span>, </span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>  <span class="at">min_dwell_time =</span> <span class="dv">20</span></span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>  )</span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="co">#&gt; Warning: 10 trips have stops whose arrival is earlier than the previous departure, so</span></span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="co">#&gt; their speeds were not capped between them: &quot;176-1@1#2310&quot;, &quot;A141-1@3#2340&quot;,</span></span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="co">#&gt; &quot;A141-1@5#2340&quot;, &quot;T2-1@1#2310&quot;, &quot;T2-1@1#2332&quot; and 5 more.</span></span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a><span class="co">#&gt; ℹ This usually happens when times after midnight are written as &quot;00:30:00&quot;</span></span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a><span class="co">#&gt;   instead of &quot;24:30:00&quot;.</span></span>
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a><span class="co">#&gt; Warning: 558 stop times could not be interpolated and were left blank.</span></span>
+<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a><span class="co">#&gt; ℹ 10 trips have an arrival earlier than the previous departure, e.g. times</span></span>
+<span id="cb8-13"><a href="#cb8-13" tabindex="-1"></a><span class="co">#&gt;   after midnight written as &quot;00:30:00&quot; instead of &quot;24:30:00&quot;: &quot;176-1@1#2310&quot;,</span></span>
+<span id="cb8-14"><a href="#cb8-14" tabindex="-1"></a><span class="co">#&gt;   &quot;A141-1@3#2340&quot;, &quot;A141-1@5#2340&quot;, &quot;T2-1@1#2310&quot;, &quot;T2-1@1#2332&quot;,</span></span>
+<span id="cb8-15"><a href="#cb8-15" tabindex="-1"></a><span class="co">#&gt;   &quot;T2-1@1#2357&quot;, &quot;T2-1@2#2332&quot;, &quot;T2-1@2#2357&quot;, &quot;T2-1@5#2334&quot;, and</span></span>
+<span id="cb8-16"><a href="#cb8-16" tabindex="-1"></a><span class="co">#&gt;   &quot;T2-1@5#2357&quot;.</span></span></code></pre></div>
+<p>With <code>fix_gtfs()</code>, the feed goes through the following
+steps, in this order:</p>
+<ol style="list-style-type: decimal">
+<li><code>remove_duplicates()</code> removes duplicated entries from
+every table;</li>
+<li><code>remove_unused_ids()</code> removes the trips without stop
+times and the entries of every table that no remaining trip uses
+(e.g. stops that are not used in any trip);</li>
+<li><code>set_max_speed()</code>, only if <code>max_speed</code> is
+given, slows down the parts of trips that are faster than
+<code>max_speed</code>;</li>
+<li><code>interpolate_stop_times()</code> fills blank stop times. Since
+this runs after the speed cap, the filled times follow the capped
+ones;</li>
+<li><code>set_min_dwell_time()</code> forces every vehicle to remain
+stopped at each intermediate stop for at least
+<code>min_dwell_time</code> for passengers to board and alight;</li>
+<li><code>interpolate_shape_dist_traveled()</code>, in feeds with
+shapes, adds the distances, in meters, travelled from the start of each
+shape to each stop and shape point.</li>
+</ol>
+<p><strong>Note:</strong></p>
+<p>All editing functions return a GTFS object readily available to be
+manipulated and analyzed using the rest of <strong>gtfstools</strong>’
+toolkit, or to be written to disk with <code>write_gtfs()</code>. For
+more information on how to use other functions made available by the
+package, please see the <a href="gtfstools.html">introductory
+vignette</a> and the <a href="https://ipea.github.io/gtfstools/reference/index.html">function
+reference</a>.</p>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

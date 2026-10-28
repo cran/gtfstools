@@ -12,6 +12,24 @@
 #' set to `TRUE`, these mismatched trip are removed from the `frequencies` table
 #' and their correspondent entries in `trips` are substituted by what would be
 #' their converted counterpart.
+#' @param strategy A string. The strategy used to set the departure times of
+#' the trips created from frequency-based entries of the `frequencies` table
+#' (i.e. those whose `exact_times` is not `1`). One of:
+#' - `"exact"` (the default): trips depart every `headway_secs` from
+#'   `start_time`;
+#' - `"half_headway"`: departures are shifted by half the headway, rounded
+#'   down to whole seconds;
+#' - `"random"`: departures are shifted by a random whole number of seconds,
+#'   from 0 up to (but not including) the headway, drawn independently for
+#'   each entry. Uses R's random number generator, so results can be made
+#'   reproducible with [set.seed()].
+#'
+#' In entries shorter than their headway, the duration of the entry (from
+#' `start_time` to `end_time`) is used in place of the headway, so that no
+#' departure is shifted to or past `end_time` and each entry still yields at
+#' least one trip. As departures are shifted towards `end_time`, an entry may
+#' yield one trip fewer than with `"exact"`. Entries whose `exact_times` is
+#' `1` follow an exact schedule and are always converted as with `"exact"`.
 #'
 #' @return A GTFS object with updated `frequencies`, `stop_times` and `trips`
 #' tables.
@@ -22,18 +40,31 @@
 #' table describes a trip called `"example_trip"`, that starts at 08:00 and
 #' stops at 09:00, with a 30 minutes headway.
 #'
-#' In practice, that means that one trip will depart at 08:00, another at 08:30
-#' and yet another at 09:00. `frequencies_to_stop_times()` appends a `"_<n>"`
+#' In practice, with the default `strategy = "exact"`, that means that one trip
+#' will depart at 08:00 and another at 08:30. As required by the GTFS
+#' specification, no trip departs at the `end_time` (09:00), which is when the
+#' headway changes or the service ceases.
+#' An entry whose `start_time` and `end_time` are equal yields a single trip,
+#' departing at that time. `frequencies_to_stop_times()` appends a `"_<n>"`
 #' suffix to the newly created trips to differentiate each one of them (e.g. in
 #' this case, the new trips, described in the `trips` and `stop_times` tables,
-#' would be called `"example_trip_1"`, `"example_trip_2"` and
-#' `"example_trip_3"`).
+#' would be called `"example_trip_1"` and `"example_trip_2"`).
 #'
-#' @examples
+#' The times of each new trip are those of its template, shifted so that it
+#' departs from the first stop at the departure time. When the template has a
+#' dwell time at the first stop, a departure close to midnight may yield an
+#' arrival before 00:00:00, which is set to 00:00:00 instead.
+#'
+#' Existing `_secs` columns in `stop_times` and `frequencies` (e.g. created
+#' with [convert_time_to_seconds()]) are used as-is, not recalculated from the
+#' time strings.
+#'
+#' @examplesIf requireNamespace("dplyr", quietly = TRUE)
 #' \dontshow{
 #'   old_dt_threads <- data.table::setDTthreads(1)
-#'   on.exit(data.table::setDTthreads(old_dt_threads), add = TRUE)
 #' }
+#' library(dplyr)
+#'
 #' data_path <- system.file("extdata/spo_gtfs.zip", package = "gtfstools")
 #' gtfs <- read_gtfs(data_path)
 #' trip <- "CPTM L07-0"
@@ -45,17 +76,29 @@
 #' converted_gtfs <- frequencies_to_stop_times(gtfs, trip)
 #'
 #' # how the specified trip_id was described in the frequencies table
-#' head(gtfs$frequencies[trip_id == trip])
+#' gtfs$frequencies |>
+#'   filter(trip_id == trip) |>
+#'   head()
 #'
 #' # the first row of each equivalent stop_times entry in the converted gtfs
-#' equivalent_stop_times <- converted_gtfs$stop_times[grepl(trip, trip_id)]
-#' equivalent_stop_times[equivalent_stop_times[, .I[1], by = trip_id]$V1]
+#' converted_gtfs$stop_times |>
+#'   filter(grepl(trip, trip_id)) |>
+#'   distinct(trip_id, .keep_all = TRUE)
+#' \dontshow{data.table::setDTthreads(old_dt_threads)}
 #'
 #' @export
-frequencies_to_stop_times <- function(gtfs, trip_id = NULL, force = FALSE) {
+frequencies_to_stop_times <- function(gtfs,
+                                      trip_id = NULL,
+                                      force = FALSE,
+                                      strategy = "exact") {
   gtfs <- assert_and_assign_gtfs_object(gtfs)
   checkmate::assert_character(trip_id, null.ok = TRUE, any.missing = FALSE)
   checkmate::assert_logical(force, len = 1, any.missing = FALSE)
+  checkmate::assert_string(strategy)
+  checkmate::assert_names(
+    strategy,
+    subset.of = c("exact", "half_headway", "random")
+  )
   gtfsio::assert_field_class(
     gtfs,
     "frequencies",
@@ -70,7 +113,7 @@ frequencies_to_stop_times <- function(gtfs, trip_id = NULL, force = FALSE) {
   )
 
   if (!is.null(trip_id)) {
-    relevant_trips <- trip_id
+    relevant_trips <- unique(trip_id)
   } else {
     relevant_trips <- unique(gtfs$frequencies$trip_id)
   }
@@ -78,19 +121,14 @@ frequencies_to_stop_times <- function(gtfs, trip_id = NULL, force = FALSE) {
   # raise warning if a given trip_id doesn't exist in 'frequencies'
 
   if (!is.null(trip_id)) {
-    invalid_trip_id <- trip_id[
-      ! trip_id %chin% unique(gtfs$frequencies$trip_id)
-    ]
+    invalid_trip_id <- warn_missing_ids(
+      trip_id,
+      gtfs$frequencies$trip_id,
+      "frequencies",
+      "trip_id"
+    )
 
-    if (!identical(invalid_trip_id, character(0))) {
-      warning(
-        "'frequencies' doesn't contain the following trip_id(s): ",
-        paste0("'", invalid_trip_id, "'", collapse = ", "),
-        call. = FALSE
-      )
-
-      relevant_trips <- setdiff(relevant_trips, invalid_trip_id)
-    }
+    relevant_trips <- setdiff(relevant_trips, invalid_trip_id)
   }
 
   # check if a trip exists in 'frequencies' but not in 'stop_times', and
@@ -110,223 +148,186 @@ frequencies_to_stop_times <- function(gtfs, trip_id = NULL, force = FALSE) {
     )
   }
 
-  # if they do not exist already, create auxiliary columns that hold the start
-  # and end time (in the case of frequencies) and the arrival and departure time
-  # (in the case of stop_times) of each trip in seconds
+  # the conversion works on copies of the relevant rows of 'frequencies' and
+  # 'stop_times', so the tables of the given gtfs are not modified. if they do
+  # not exist already, create auxiliary columns that hold the start and end
+  # time (in the case of frequencies) and the arrival and departure time (in the
+  # case of stop_times) of each trip in seconds
 
-  if (!gtfsio::check_field_exists(gtfs, "frequencies", "start_time_secs")) {
-    gtfs$frequencies[
-      trip_id %chin% relevant_trips,
-      start_time_secs := string_to_seconds(start_time)
-    ]
-    created_start_secs <- TRUE
+  relevant_trips_dt <- data.table::data.table(trip_id = relevant_trips)
+
+  freqs <- gtfs$frequencies[relevant_trips_dt, on = "trip_id", nomatch = 0L]
+
+  if (!"start_time_secs" %chin% names(freqs)) {
+    freqs[, start_time_secs := string_to_seconds(start_time)]
   }
 
-  if (!gtfsio::check_field_exists(gtfs, "frequencies", "end_time_secs")) {
-    gtfs$frequencies[
-      trip_id %chin% relevant_trips,
-      end_time_secs := string_to_seconds(end_time)
-    ]
-    created_end_secs <- TRUE
+  if (!"end_time_secs" %chin% names(freqs)) {
+    freqs[, end_time_secs := string_to_seconds(end_time)]
   }
 
-  if (!gtfsio::check_field_exists(gtfs, "stop_times", "departure_time_secs")) {
-    gtfs$stop_times[
-      trip_id %chin% relevant_trips,
-      departure_time_secs := string_to_seconds(departure_time)
-    ]
-    created_departure_secs <- TRUE
+  templates <- gtfs$stop_times[relevant_trips_dt, on = "trip_id", nomatch = 0L]
+
+  created_departure_secs <- !"departure_time_secs" %chin% names(templates)
+  if (created_departure_secs) {
+    templates[, departure_time_secs := string_to_seconds(departure_time)]
   }
 
-  if (!gtfsio::check_field_exists(gtfs, "stop_times", "arrival_time_secs")) {
-    gtfs$stop_times[
-      trip_id %chin% relevant_trips,
-      arrival_time_secs := string_to_seconds(arrival_time)
-    ]
-    created_arrival_secs <- TRUE
+  created_arrival_secs <- !"arrival_time_secs" %chin% names(templates)
+  if (created_arrival_secs) {
+    templates[, arrival_time_secs := string_to_seconds(arrival_time)]
   }
 
   # first step: figure out, based on the 'frequencies' table, what are the
-  # departure times of each trip to be added to the 'stop_times' table
+  # departure times of each trip to be added to the 'stop_times' table.
+  # each entry generates departures every headway_secs from start_time until
+  # (but not including) end_time
+  #
+  # with a strategy other than "exact", the departures of each entry are
+  # shifted by an offset of at most its headway or its duration, whichever is
+  # smaller, so that every entry still yields at least one departure before its
+  # end_time. entries with exact_times = 1 follow an exact schedule and are not
+  # shifted. invalid entries (NA times, end_time before start_time, non-positive
+  # headway) get a NA or 0 offset, so they are still caught by
+  # get_frequencies_departures()
 
-  departure_times <- lapply(
-    relevant_trips,
-    function(trip) {
-      trip_frequencies <- gtfs$frequencies[trip_id == trip]
-      trip_frequencies[
-        ,
-        departure_times := mapply(
-          seq,
-          from = start_time_secs,
-          to = end_time_secs,
-          by = headway_secs,
-          SIMPLIFY = FALSE
-        )
-      ]
+  if (strategy != "exact") {
+    max_offset <- pmax(
+      0L,
+      pmin(freqs$headway_secs, freqs$end_time_secs - freqs$start_time_secs)
+    )
 
-      departure_secs <- unlist(trip_frequencies$departure_times)
-
-      # there may be some duplicated departure times if the same value is listed
-      # in the upper and lower limit of two differente 'frequencies' entries
-      # (e.g. if the table specifies one frequency from 5am to 6am and another
-      # from 6am to 7am, the 6am departure may appear in the departures
-      # generated by both entries).
-      # so we take the unique 'departure_secs' values.
-
-      departure_secs <- unique(departure_secs)
-
-      # each new trip added to the 'stop_times' will be name after the original
-      # trip, with a _<n> suffix. so the trip "original_trip" will generate the
-      # trips "original_trip_1", "original_trip_2", ..., "original_trip_<n>"
-
-      new_trips_names <- sprintf(
-        "%s_%d",
-        trip,
-        seq_along(departure_secs)
-      )
-      departure_secs <- structure(departure_secs, names = new_trips_names)
+    if ("exact_times" %chin% names(freqs)) {
+      max_offset[freqs$exact_times %in% 1L] <- 0L
     }
-  )
 
-  # second step: identify the stop_times template of each relevant trip.
-  # since we have the departure time of each one of the trips to be added, we
-  # subtract the template's first departure time value from all template's
-  # departure and arrival times.
-
-  templates <- lapply(
-    relevant_trips,
-    function(trip) {
-      template <- gtfs$stop_times[trip_id == trip]
-
-      # if template has 0 rows (i.e. the specified trip doesn't exist in
-      # stop_times), the min() call bellow will raise a warning and return Inf.
-      # the value of first_departure won't change the result of the subtractions
-      # below, since departure/arrival_time_secs are integer(0), but I'll assign
-      # integer(0) to first_departure just for greater expressiveness
-
-      if (identical(template$departure_time_secs, integer(0))) {
-        first_departure <- integer(0)
-      } else {
-        first_departure <- min(template$departure_time_secs, na.rm = TRUE)
-      }
-
-      template[
-        ,
-        `:=`(
-          departure_time_secs = departure_time_secs - first_departure,
-          arrival_time_secs = arrival_time_secs - first_departure
-        )
-      ][]
+    if (strategy == "half_headway") {
+      offset <- max_offset %/% 2L
+    } else {
+      offset <- as.integer(stats::runif(nrow(freqs)) * max_offset)
     }
-  )
 
-  # third step: build a "new" stop_times table by adding the departure time of
-  # each new trip to the departure and arrival time of its correspondent
-  # template.
-  # the 'if' by the end of the step is required when the specified trip_id is
-  # character(0), in which case the rbindlist call returns a data.table with no
-  # columns
-
-  stop_times_to_add <- mapply(
-    departure_times,
-    templates,
-    SIMPLIFY = FALSE,
-    FUN = function(departures, template) {
-      n_stops <- nrow(template)
-      n_departures <- length(departures)
-
-      seconds_to_add <- rep(departures, each = n_stops)
-      template_dep <- rep(template$departure_time_secs, times = n_departures)
-      template_arr <- rep(template$arrival_time_secs, times = n_departures)
-
-      new_departures <- template_dep + seconds_to_add
-      new_arrivals <- template_arr + seconds_to_add
-
-      adjusted_times <- data.table::data.table(
-        trip_id = rep(names(departures), each = n_stops),
-        departure_time_secs = new_departures,
-        arrival_time_secs = new_arrivals
-      )
-
-      adjusted_cols <- c(
-        "trip_id",
-        "departure_time",
-        "departure_time_secs",
-        "arrival_time",
-        "arrival_time_secs"
-      )
-      other_cols <- setdiff(names(template), adjusted_cols)
-      template_excess <- template[, ..other_cols]
-
-      adjusted_times <- cbind(
-        adjusted_times,
-        template_excess[rep(seq_len(n_stops), times = n_departures)]
-      )
-    }
-  )
-  stop_times_to_add <- data.table::rbindlist(stop_times_to_add)
-
-  if (ncol(stop_times_to_add) > 0) {
-    stop_times_to_add[
-      ,
-      `:=`(
-        departure_time = seconds_to_string(departure_time_secs),
-        arrival_time = seconds_to_string(arrival_time_secs)
-      )
-    ]
+    data.table::set(
+      freqs,
+      j = "start_time_secs",
+      value = freqs$start_time_secs + offset
+    )
   }
+
+  departures <- get_frequencies_departures(freqs)
+
+  # each new trip is named after the original trip, with a _<n> suffix. so the
+  # trip "original_trip" generates the trips "original_trip_1",
+  # "original_trip_2", ..., "original_trip_<n>"
+
+  departures[
+    ,
+    new_trip_id := sprintf("%s_%d", trip_id, data.table::rowid(trip_id))
+  ]
+
+  # second step: identify the stop_times template of each relevant trip and
+  # its first departure time. trips not listed in 'stop_times' (only kept when
+  # force = TRUE) have no template, and therefore no stop_times entries
+
+  templates_info <- templates[
+    ,
+    .(
+      n_stops = .N,
+      first_departure = if (all(is.na(departure_time_secs))) {
+        NA_integer_
+      } else {
+        min(departure_time_secs, na.rm = TRUE)
+      }
+    ),
+    by = trip_id
+  ]
+
+  if (anyNA(templates_info$first_departure)) {
+    empty_templates <- templates_info[is.na(first_departure)]$trip_id
+    n_empty <- length(empty_templates)
+
+    cli::cli_abort(
+      c(
+        paste0(
+          "Can't convert the frequencies of {n_empty} ",
+          "trip_id{?s}: {.val {empty_templates}}."
+        ),
+        "x" = paste0(
+          "{.file stop_times} has no {.field departure_time} for ",
+          "{cli::qty(n_empty)}{?this trip/these trips}."
+        ),
+        "i" = paste0(
+          "At least one departure time is needed to shift the trip's ",
+          "times to each departure listed in {.file frequencies}."
+        )
+      ),
+      class = "gtfstools_empty_template"
+    )
+  }
+
+  templates_info[, first_row := cumsum(n_stops) - n_stops + 1L]
+
+  # third step: build a "new" stop_times table by repeating each template once
+  # per departure, shifting its times so that the first departure of the
+  # template matches the departure of the new trip
+
+  template_idx <- match(departures$trip_id, templates_info$trip_id)
+  n_rows <- templates_info$n_stops[template_idx]
+  n_rows[is.na(n_rows)] <- 0L
+
+  seconds_to_add <- rep(
+    departures$departure_secs - templates_info$first_departure[template_idx],
+    n_rows
+  )
+  rows_to_add <- rep(templates_info$first_row[template_idx], n_rows) +
+    sequence(n_rows) - 1L
+
+  stop_times_to_add <- templates[rows_to_add]
+  stop_times_to_add[
+    ,
+    `:=`(
+      trip_id = rep(departures$new_trip_id, n_rows),
+      departure_time_secs = departure_time_secs + seconds_to_add,
+      arrival_time_secs = arrival_time_secs + seconds_to_add
+    )
+  ]
+
+  # the arrival at the first stop is earlier than the first departure when
+  # there's a dwell time there, so departures close to midnight may yield
+  # negative arrivals, which are set to 00:00:00 instead
+
+  stop_times_to_add[
+    arrival_time_secs < 0L,
+    arrival_time_secs := 0L
+  ]
+  stop_times_to_add[
+    ,
+    `:=`(
+      departure_time = seconds_to_string(departure_time_secs),
+      arrival_time = seconds_to_string(arrival_time_secs)
+    )
+  ]
 
   # fourth step: filter the original stop_times table and bind the new one to
   # it. remove the auxiliary columns if they didn't exist before the function
   # call
 
-  if (exists("created_departure_secs")) {
-    gtfs$stop_times[, departure_time_secs := NULL]
-
-    if (ncol(stop_times_to_add) > 0) {
-      stop_times_to_add[, departure_time_secs := NULL]
-    }
-  }
-
-  if (exists("created_arrival_secs")) {
-    gtfs$stop_times[, arrival_time_secs := NULL]
-
-    if (ncol(stop_times_to_add) > 0) {
-      stop_times_to_add[, arrival_time_secs := NULL]
-    }
-  }
+  if (created_departure_secs) stop_times_to_add[, departure_time_secs := NULL]
+  if (created_arrival_secs) stop_times_to_add[, arrival_time_secs := NULL]
 
   filtered_stop_times <- gtfs$stop_times[! trip_id %chin% relevant_trips]
   gtfs$stop_times <- rbind(filtered_stop_times, stop_times_to_add)
 
-  # fifth step: adjust the trips table to include the new trips
+  # fifth step: adjust the trips table to include the new trips, each one a
+  # copy of its original trip
 
-  trips_to_add <- mapply(
-    relevant_trips,
-    departure_times,
-    SIMPLIFY = FALSE,
-    FUN = function(trip, departures) {
-      n_departures <- length(departures)
-      new_trips <- gtfs$trips[trip_id == trip]
-      new_trips <- new_trips[rep(1, n_departures)]
-      new_trips[, trip_id := names(departures)][]
-    }
-  )
-  trips_to_add <- data.table::rbindlist(trips_to_add)
+  trips_to_add <- gtfs$trips[match(departures$trip_id, gtfs$trips$trip_id)]
+  trips_to_add[, trip_id := departures$new_trip_id]
 
   filtered_trips <- gtfs$trips[! trip_id %chin% relevant_trips]
   gtfs$trips <- rbind(filtered_trips, trips_to_add)
 
-  # sixth step: adjust the frequencies table. remove the auxiliary columns if
-  # they didn't exist before the function call
-
-  if (exists("created_start_secs")) {
-    gtfs$frequencies[, start_time_secs := NULL]
-  }
-
-  if (exists("created_end_secs")) {
-    gtfs$frequencies[, end_time_secs := NULL]
-  }
+  # sixth step: adjust the frequencies table
 
   filtered_frequencies <- gtfs$frequencies[! trip_id %chin% relevant_trips]
 
@@ -337,4 +338,71 @@ frequencies_to_stop_times <- function(gtfs, trip_id = NULL, force = FALSE) {
   }
 
   return(gtfs)
+}
+
+
+
+#' Get the departures generated by frequencies entries
+#'
+#' Expands each entry of a `frequencies` table into its departures, every
+#' `headway_secs` from `start_time` until (but not including) `end_time`, as
+#' required by the GTFS specification. An entry whose `start_time` and
+#' `end_time` are equal generates a single departure. Only the unique
+#' departures of each trip are kept. Raises an error if any entry is invalid.
+#'
+#' @param freqs A `data.table` with the columns `trip_id`, `start_time_secs`,
+#'   `end_time_secs` and `headway_secs` (all but `trip_id` integers).
+#'
+#' @return A `data.table` with the columns `trip_id` and `departure_secs`.
+#'
+#' @keywords internal
+get_frequencies_departures <- function(freqs) {
+  invalid_entry <- is.na(freqs$start_time_secs) |
+    is.na(freqs$end_time_secs) |
+    is.na(freqs$headway_secs) |
+    freqs$end_time_secs < freqs$start_time_secs |
+    (freqs$headway_secs <= 0L & freqs$end_time_secs != freqs$start_time_secs)
+
+  if (any(invalid_entry)) {
+    invalid_trips <- unique(freqs$trip_id[invalid_entry])
+    n_invalid <- length(invalid_trips)
+
+    cli::cli_abort(
+      c(
+        paste0(
+          "{.file frequencies} has invalid entries for {n_invalid} ",
+          "trip_id{?s}: {.val {invalid_trips}}."
+        ),
+        "i" = paste0(
+          "Each entry must have a valid {.field start_time} and ",
+          "{.field end_time}, with {.field end_time} not before ",
+          "{.field start_time}, and a positive {.field headway_secs} (unless ",
+          "{.field start_time} and {.field end_time} are equal)."
+        )
+      ),
+      class = "gtfstools_invalid_frequencies"
+    )
+  }
+
+  # end_time is exclusive: the last departure is the last one strictly before
+  # it, hence the (span - 1) below
+
+  span <- freqs$end_time_secs - freqs$start_time_secs
+  n_departures <- rep(1L, length(span))
+  n_departures[span > 0L] <- (span[span > 0L] - 1L) %/%
+    freqs$headway_secs[span > 0L] + 1L
+
+  # overlapping entries (which are invalid GTFS) may still generate the same
+  # departure more than once, so we keep only the unique departures of each
+  # trip
+
+  departures <- unique(
+    data.table::data.table(
+      trip_id = rep(freqs$trip_id, n_departures),
+      departure_secs = rep(freqs$start_time_secs, n_departures) +
+        (sequence(n_departures) - 1L) * rep(freqs$headway_secs, n_departures)
+    )
+  )
+
+  return(departures)
 }

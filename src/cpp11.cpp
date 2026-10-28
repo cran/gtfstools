@@ -12,6 +12,41 @@ extern "C" SEXP _gtfstools_cpp_time_to_seconds(SEXP times_in) {
     return cpp11::as_sexp(cpp_time_to_seconds(cpp11::as_cpp<cpp11::decay_t<const strings>>(times_in)));
   END_CPP11
 }
+// distance_haversine.cpp
+doubles rcpp_distance_haversine(const doubles lat_from, const doubles lon_from, const doubles lat_to, const doubles lon_to);
+extern "C" SEXP _gtfstools_rcpp_distance_haversine(SEXP lat_from, SEXP lon_from, SEXP lat_to, SEXP lon_to) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(rcpp_distance_haversine(cpp11::as_cpp<cpp11::decay_t<const doubles>>(lat_from), cpp11::as_cpp<cpp11::decay_t<const doubles>>(lon_from), cpp11::as_cpp<cpp11::decay_t<const doubles>>(lat_to), cpp11::as_cpp<cpp11::decay_t<const doubles>>(lon_to)));
+  END_CPP11
+}
+// distance_haversine.cpp
+doubles cpp_stop_distances(const doubles lat, const doubles lon, const integers from, const integers to);
+extern "C" SEXP _gtfstools_cpp_stop_distances(SEXP lat, SEXP lon, SEXP from, SEXP to) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(cpp_stop_distances(cpp11::as_cpp<cpp11::decay_t<const doubles>>(lat), cpp11::as_cpp<cpp11::decay_t<const doubles>>(lon), cpp11::as_cpp<cpp11::decay_t<const integers>>(from), cpp11::as_cpp<cpp11::decay_t<const integers>>(to)));
+  END_CPP11
+}
+// distance_haversine.cpp
+doubles cpp_locate_stops_on_shapes(const doubles shape_lat, const doubles shape_lon, const integers shape_size, const integers pattern_shape, const doubles stop_lat, const doubles stop_lon, const integers pattern_size, const bool prune);
+extern "C" SEXP _gtfstools_cpp_locate_stops_on_shapes(SEXP shape_lat, SEXP shape_lon, SEXP shape_size, SEXP pattern_shape, SEXP stop_lat, SEXP stop_lon, SEXP pattern_size, SEXP prune) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(cpp_locate_stops_on_shapes(cpp11::as_cpp<cpp11::decay_t<const doubles>>(shape_lat), cpp11::as_cpp<cpp11::decay_t<const doubles>>(shape_lon), cpp11::as_cpp<cpp11::decay_t<const integers>>(shape_size), cpp11::as_cpp<cpp11::decay_t<const integers>>(pattern_shape), cpp11::as_cpp<cpp11::decay_t<const doubles>>(stop_lat), cpp11::as_cpp<cpp11::decay_t<const doubles>>(stop_lon), cpp11::as_cpp<cpp11::decay_t<const integers>>(pattern_size), cpp11::as_cpp<cpp11::decay_t<const bool>>(prune)));
+  END_CPP11
+}
+// distance_haversine.cpp
+list cpp_shape_cut_segments(const doubles lat, const doubles lon, const integers shape_size, const integers cut_shape, const doubles from, const doubles to);
+extern "C" SEXP _gtfstools_cpp_shape_cut_segments(SEXP lat, SEXP lon, SEXP shape_size, SEXP cut_shape, SEXP from, SEXP to) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(cpp_shape_cut_segments(cpp11::as_cpp<cpp11::decay_t<const doubles>>(lat), cpp11::as_cpp<cpp11::decay_t<const doubles>>(lon), cpp11::as_cpp<cpp11::decay_t<const integers>>(shape_size), cpp11::as_cpp<cpp11::decay_t<const integers>>(cut_shape), cpp11::as_cpp<cpp11::decay_t<const doubles>>(from), cpp11::as_cpp<cpp11::decay_t<const doubles>>(to)));
+  END_CPP11
+}
+// distance_haversine.cpp
+integers cpp_merge_stop_clusters(const int n, const integers from, const integers to);
+extern "C" SEXP _gtfstools_cpp_merge_stop_clusters(SEXP n, SEXP from, SEXP to) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(cpp_merge_stop_clusters(cpp11::as_cpp<cpp11::decay_t<const int>>(n), cpp11::as_cpp<cpp11::decay_t<const integers>>(from), cpp11::as_cpp<cpp11::decay_t<const integers>>(to)));
+  END_CPP11
+}
 // seconds_to_string.cpp
 strings cpp_seconds_to_string(const integers seconds_from_midnight);
 extern "C" SEXP _gtfstools_cpp_seconds_to_string(SEXP seconds_from_midnight) {
@@ -19,11 +54,24 @@ extern "C" SEXP _gtfstools_cpp_seconds_to_string(SEXP seconds_from_midnight) {
     return cpp11::as_sexp(cpp_seconds_to_string(cpp11::as_cpp<cpp11::decay_t<const integers>>(seconds_from_midnight)));
   END_CPP11
 }
+// sequence_pattern.cpp
+integers cpp_sequence_pattern_id(const integers group_size, const list columns);
+extern "C" SEXP _gtfstools_cpp_sequence_pattern_id(SEXP group_size, SEXP columns) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(cpp_sequence_pattern_id(cpp11::as_cpp<cpp11::decay_t<const integers>>(group_size), cpp11::as_cpp<cpp11::decay_t<const list>>(columns)));
+  END_CPP11
+}
 
 extern "C" {
 static const R_CallMethodDef CallEntries[] = {
-    {"_gtfstools_cpp_seconds_to_string", (DL_FUNC) &_gtfstools_cpp_seconds_to_string, 1},
-    {"_gtfstools_cpp_time_to_seconds",   (DL_FUNC) &_gtfstools_cpp_time_to_seconds,   1},
+    {"_gtfstools_cpp_locate_stops_on_shapes", (DL_FUNC) &_gtfstools_cpp_locate_stops_on_shapes, 8},
+    {"_gtfstools_cpp_merge_stop_clusters",    (DL_FUNC) &_gtfstools_cpp_merge_stop_clusters,    3},
+    {"_gtfstools_cpp_seconds_to_string",      (DL_FUNC) &_gtfstools_cpp_seconds_to_string,      1},
+    {"_gtfstools_cpp_sequence_pattern_id",    (DL_FUNC) &_gtfstools_cpp_sequence_pattern_id,    2},
+    {"_gtfstools_cpp_shape_cut_segments",     (DL_FUNC) &_gtfstools_cpp_shape_cut_segments,     6},
+    {"_gtfstools_cpp_stop_distances",         (DL_FUNC) &_gtfstools_cpp_stop_distances,         4},
+    {"_gtfstools_cpp_time_to_seconds",        (DL_FUNC) &_gtfstools_cpp_time_to_seconds,        1},
+    {"_gtfstools_rcpp_distance_haversine",    (DL_FUNC) &_gtfstools_rcpp_distance_haversine,    4},
     {NULL, NULL, 0}
 };
 }

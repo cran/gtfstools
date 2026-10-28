@@ -4,8 +4,36 @@ trip_id <- "CPTM L07-0"
 
 tester <- function(gtfs = get("gtfs", envir = parent.frame()),
                    trip_id = NULL,
-                   force = FALSE) {
-  frequencies_to_stop_times(gtfs, trip_id, force)
+                   force = FALSE,
+                   strategy = "exact") {
+  frequencies_to_stop_times(gtfs, trip_id, force, strategy)
+}
+
+# returns a function that restores the state of the random number generator
+# (or its absence) at the time save_seed() was called
+
+save_seed <- function() {
+  had_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
+  if (had_seed) old_seed <- get(".Random.seed", envir = globalenv())
+
+  function() {
+    if (had_seed) {
+      assign(".Random.seed", old_seed, envir = globalenv()) # nolint
+    } else if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
+      rm(".Random.seed", envir = globalenv())
+    }
+  }
+}
+
+# returns the first departure time of each trip created from "CPTM L07-0" in a
+# feed whose frequencies table is replaced by the given entries
+
+first_departures_of <- function(freqs, strategy) {
+  freq_gtfs <- read_gtfs(data_path)
+  freq_gtfs$frequencies <- freqs
+  converted_gtfs <- tester(freq_gtfs, strategy = strategy)
+  new_trips <- converted_gtfs$stop_times[startsWith(trip_id, "CPTM L07-0_")]
+  new_trips[, .(first = min(departure_time)), by = trip_id]$first
 }
 
 
@@ -19,6 +47,10 @@ test_that("raises errors due to incorrect input types/value", {
   expect_error(tester(trip_id = NA))
   expect_error(tester(force = 1))
   expect_error(tester(force = NA))
+  expect_error(tester(strategy = "foo"))
+  expect_error(tester(strategy = c("exact", "random")))
+  expect_error(tester(strategy = 1))
+  expect_error(tester(strategy = NA_character_))
 })
 
 test_that("raises warning if a non-existent trip_id is specified", {
@@ -50,7 +82,7 @@ test_that("calculates first departure times and new trip_ids correctly", {
     departures := mapply(
       seq,
       start_time_secs,
-      end_time_secs,
+      end_time_secs - 1L,
       headway_secs
     )
   ]
@@ -248,4 +280,247 @@ test_that("works ok if trip is not in frequencies but is in stop_times", {
   # expected result is not to do anything to that trip
   expect_warning(converted_gtfs <- tester(trip_id = trip))
   expect_identical(converted_gtfs, tester(trip_id = character(0)))
+})
+
+test_that("raises informative errors if frequencies has invalid entries", {
+  # end_time before start_time
+
+  bad_gtfs <- read_gtfs(data_path)
+  bad_gtfs$frequencies[1, end_time := "00:00:00"]
+  bad_trip <- bad_gtfs$frequencies$trip_id[1]
+  expect_error(
+    tester(bad_gtfs),
+    class = "gtfstools_invalid_frequencies",
+    regexp = bad_trip,
+    fixed = TRUE
+  )
+
+  # no headway between different start_time and end_time
+
+  bad_gtfs <- read_gtfs(data_path)
+  bad_gtfs$frequencies[1, headway_secs := 0L]
+  expect_error(tester(bad_gtfs), class = "gtfstools_invalid_frequencies")
+
+  # blank start_time
+
+  bad_gtfs <- read_gtfs(data_path)
+  bad_gtfs$frequencies[1, start_time := ""]
+  expect_error(tester(bad_gtfs), class = "gtfstools_invalid_frequencies")
+
+  # the given gtfs is not changed when the error is raised
+
+  original_gtfs <- read_gtfs(data_path)
+  original_gtfs$frequencies[1, start_time := ""]
+  expect_identical(bad_gtfs, original_gtfs)
+})
+
+test_that("an entry with equal start_time and end_time creates one trip", {
+  one_trip_gtfs <- read_gtfs(data_path)
+  one_trip_gtfs$frequencies <- one_trip_gtfs$frequencies[1]
+  one_trip_gtfs$frequencies[, `:=`(end_time = start_time, headway_secs = 0L)]
+  converted_trip <- one_trip_gtfs$frequencies$trip_id
+
+  converted_gtfs <- tester(one_trip_gtfs)
+  new_trips <- converted_gtfs$trips$trip_id
+  expect_identical(
+    new_trips[startsWith(new_trips, paste0(converted_trip, "_"))],
+    paste0(converted_trip, "_1")
+  )
+})
+
+test_that("no trip departs at an entry's end_time", {
+  # 06:00:00 to 07:00:00 every 30 minutes yields departures at 06:00:00 and
+  # 06:30:00 only, as end_time is exclusive in the GTFS specification
+
+  exclusive_gtfs <- read_gtfs(data_path)
+  exclusive_gtfs$frequencies <- data.table::data.table(
+    trip_id = "CPTM L07-0",
+    start_time = "06:00:00",
+    end_time = "07:00:00",
+    headway_secs = 1800L
+  )
+
+  converted_gtfs <- tester(exclusive_gtfs)
+  new_trips <- converted_gtfs$stop_times[startsWith(trip_id, "CPTM L07-0_")]
+  first_departures <- new_trips[, .(first = min(departure_time)), by = trip_id]
+  expect_identical(first_departures$first, c("06:00:00", "06:30:00"))
+})
+
+test_that("raises informative error if a trip has no departure times", {
+  bad_gtfs <- read_gtfs(data_path)
+  bad_gtfs$stop_times[trip_id == "CPTM L07-0", departure_time := ""]
+  expect_error(
+    tester(bad_gtfs),
+    class = "gtfstools_empty_template",
+    regexp = "CPTM L07-0",
+    fixed = TRUE
+  )
+
+  # the given gtfs is not changed when the error is raised
+
+  original_gtfs <- read_gtfs(data_path)
+  original_gtfs$stop_times[trip_id == "CPTM L07-0", departure_time := ""]
+  expect_identical(bad_gtfs, original_gtfs)
+})
+
+test_that("duplicated trip_ids are converted only once", {
+  full_gtfs <- read_gtfs(data_path)
+  expect_identical(
+    tester(full_gtfs, trip_id = c(trip_id, trip_id)),
+    tester(full_gtfs, trip_id = trip_id)
+  )
+})
+
+test_that("strategy = 'half_headway' shifts frequency-based departures", {
+  freqs <- data.table::data.table(
+    trip_id = "CPTM L07-0",
+    start_time = "06:00:00",
+    end_time = "07:00:00",
+    headway_secs = 1800L
+  )
+  expect_identical(
+    first_departures_of(freqs, "half_headway"),
+    c("06:15:00", "06:45:00")
+  )
+
+  # the offset is bounded by the duration of entries shorter than the headway
+
+  short_freqs <- data.table::copy(freqs)[, end_time := "06:10:00"]
+  expect_identical(first_departures_of(short_freqs, "half_headway"), "06:05:00")
+
+  # entries with exact_times = 1 are not shifted, while those with
+  # exact_times = 0 or NA are
+
+  exact_freqs <- data.table::copy(freqs)[, exact_times := 1L]
+  expect_identical(
+    first_departures_of(exact_freqs, "half_headway"),
+    c("06:00:00", "06:30:00")
+  )
+
+  na_freqs <- data.table::copy(freqs)[, exact_times := NA_integer_]
+  expect_identical(
+    first_departures_of(na_freqs, "half_headway"),
+    c("06:15:00", "06:45:00")
+  )
+
+  mixed_freqs <- data.table::data.table(
+    trip_id = "CPTM L07-0",
+    start_time = c("06:00:00", "08:00:00"),
+    end_time = c("07:00:00", "09:00:00"),
+    headway_secs = 1800L,
+    exact_times = c(0L, 1L)
+  )
+  expect_identical(
+    first_departures_of(mixed_freqs, "half_headway"),
+    c("06:15:00", "06:45:00", "08:00:00", "08:30:00")
+  )
+})
+
+test_that("strategy = 'random' shifts departures by a random offset", {
+  restore_seed <- save_seed()
+  on.exit(restore_seed(), add = TRUE)
+
+  freqs <- data.table::data.table(
+    trip_id = "CPTM L07-0",
+    start_time = c("06:00:00", "08:00:00"),
+    end_time = c("07:00:00", "08:10:00"),
+    headway_secs = c(1800L, 1800L)
+  )
+
+  set.seed(1)
+  first_departures <- first_departures_of(freqs, "random")
+  set.seed(1)
+  expect_identical(first_departures_of(freqs, "random"), first_departures)
+
+  # each entry is shifted by its own offset, drawn in [0, 1800) for the first
+  # entry and in [0, 600) for the second, which is shorter than its headway
+
+  set.seed(1)
+  offsets <- as.integer(stats::runif(2) * c(1800L, 600L))
+  expect_true(all(offsets > 0L))
+
+  expected_secs <- c(
+    6L * 3600L + offsets[1] + c(0L, 1800L),
+    8L * 3600L + offsets[2]
+  )
+  expect_identical(string_to_seconds(first_departures), expected_secs)
+})
+
+test_that("only strategy = 'random' uses the random number generator", {
+  restore_seed <- save_seed()
+  on.exit(restore_seed(), add = TRUE)
+
+  set.seed(1)
+  seed_before <- get(".Random.seed", envir = globalenv())
+  tester(trip_id = "CPTM L07-1")
+  expect_identical(get(".Random.seed", envir = globalenv()), seed_before)
+  tester(trip_id = "CPTM L07-1", strategy = "half_headway")
+  expect_identical(get(".Random.seed", envir = globalenv()), seed_before)
+})
+
+test_that("invalid entries still raise an error with other strategies", {
+  bad_gtfs <- read_gtfs(data_path)
+  bad_gtfs$frequencies[1, headway_secs := 0L]
+  expect_error(
+    tester(bad_gtfs, strategy = "random"),
+    class = "gtfstools_invalid_frequencies"
+  )
+  expect_error(
+    tester(bad_gtfs, strategy = "half_headway"),
+    class = "gtfstools_invalid_frequencies"
+  )
+
+  bad_gtfs <- read_gtfs(data_path)
+  bad_gtfs$frequencies[1, start_time := ""]
+  expect_error(
+    tester(bad_gtfs, strategy = "random"),
+    class = "gtfstools_invalid_frequencies"
+  )
+
+  bad_gtfs <- read_gtfs(data_path)
+  bad_gtfs$frequencies[1, headway_secs := NA_integer_]
+  bad_trip <- bad_gtfs$frequencies$trip_id[1]
+  expect_error(
+    tester(bad_gtfs, strategy = "random"),
+    class = "gtfstools_invalid_frequencies",
+    regexp = bad_trip,
+    fixed = TRUE
+  )
+})
+
+test_that("doesn't change given gtfs with other strategies", {
+  gtfs <- read_gtfs(data_path)
+  original_gtfs <- read_gtfs(data_path)
+
+  converted_gtfs <- tester(gtfs, strategy = "random")
+  converted_gtfs <- tester(gtfs, strategy = "half_headway")
+
+  data.table::setindex(gtfs$frequencies, NULL)
+  data.table::setindex(gtfs$stop_times, NULL)
+  data.table::setindex(gtfs$trips, NULL)
+  expect_identical(gtfs, original_gtfs)
+})
+
+test_that("arrivals before 00:00:00 are set to 00:00:00", {
+  dwell_gtfs <- read_gtfs(data_path)
+  dwell_gtfs$frequencies <- data.table::data.table(
+    trip_id = trip_id,
+    start_time = "00:00:00",
+    end_time = "01:00:00",
+    headway_secs = 1800L
+  )
+  first_stop <- dwell_gtfs$stop_times$trip_id == trip_id &
+    dwell_gtfs$stop_times$stop_sequence == 1L
+  first_departure <- dwell_gtfs$stop_times$departure_time[first_stop]
+  dwell_gtfs$stop_times[
+    first_stop,
+    arrival_time := seconds_to_string(string_to_seconds(first_departure) - 60L)
+  ]
+
+  result <- tester(dwell_gtfs)
+  first_stops <- result$stop_times[
+    startsWith(trip_id, "CPTM L07-0_") & stop_sequence == 1L
+  ]
+  expect_identical(first_stops$arrival_time, c("00:00:00", "00:29:00"))
+  expect_identical(first_stops$departure_time, c("00:00:00", "00:30:00"))
 })

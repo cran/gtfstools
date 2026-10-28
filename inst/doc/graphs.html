@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>Building transit network graphs</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Building transit network graphs</h1>
+
+
+
+<p>Many transport analyses, such as network centrality and transit
+assignment models, are carried out on a graph of the transit network
+rather than on its timetable. <code>build_graph()</code> builds such a
+graph from the trips of a GTFS feed that depart within a period of day.
+The graph has two types of nodes:</p>
+<ul>
+<li><strong>stop</strong> nodes, one per stop, the physical place where
+a passenger stands;</li>
+<li><strong>service</strong> nodes, one for each route and direction at
+each stop it serves.</li>
+</ul>
+<p>obs. this way, a stop served by routes 1 and 2, both in one
+direction, gets <em>one stop node</em> and <em>two service nodes</em>,
+all at the same coordinates.</p>
+<p>And four types of links:</p>
+<ul>
+<li><strong>in-vehicle</strong> links between the service nodes of
+consecutive stops, with the mean travel time between them;</li>
+<li><strong>boarding</strong> links from each stop to the service nodes
+from which trips depart, with the number of departures and the mean
+waiting time (half the headway);</li>
+<li><strong>alighting</strong> links from each service node back to its
+stop;</li>
+<li>walking <strong>transfer</strong> links between nearby stops.</li>
+</ul>
+<p>The graph can be returned as tables following the General Modeling
+Network Specification (GMNS), or as an <code>{igraph}</code> or
+<code>{tidygraph}</code> graph. This vignette shows how to build a
+transit network graph from GTFS feeds and how to analyse and plot the
+network with these packages like <code>{sfnetworks}</code> and
+<code>{ggraph}</code>. Please see the documentation of
+<code>build_graph()</code> for the details of how nodes and links are
+built.</p>
+<div id="preparing-the-feed" class="section level1">
+<h1>Preparing the feed</h1>
+<p>We will use the sample feed of Porto Alegre, included in the package,
+and build the network of the morning peak, from 7am to 10am.
+<code>build_graph()</code> pools the trips of every service in the feed.
+In this example, we will remove services running on weekends with
+<code>filter_by_weekday()</code>:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(gtfstools)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="co"># read GTFS feed</span></span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>path <span class="ot">&lt;-</span> <span class="fu">system.file</span>(<span class="st">&quot;extdata/poa_gtfs.zip&quot;</span>, <span class="at">package =</span> <span class="st">&quot;gtfstools&quot;</span>)</span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a>gtfs <span class="ot">&lt;-</span> <span class="fu">read_gtfs</span>(path)</span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="co"># drop weekends</span></span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a>gtfs <span class="ot">&lt;-</span> <span class="fu">filter_by_weekday</span>(</span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a>  gtfs,</span>
+<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a>  <span class="at">weekday =</span> <span class="fu">c</span>(<span class="st">&quot;saturday&quot;</span>, <span class="st">&quot;sunday&quot;</span>), </span>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a>  <span class="at">keep =</span> <span class="cn">FALSE</span></span>
+<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a>  )</span></code></pre></div>
+<p>Oftentimes, a GTFS feed comes with a few inconsistencies, such as
+duplicated trips, unused stops, etc. This particular feed lists only the
+times of the first and the last stop of each trip, and the links between
+stops without times would have no travel time, so they couldn’t be used
+to calculate travel times through the network. Here we will use the
+<code>fix_gtfs()</code> function to fix several of these
+inconsistencies. We also want to ensure that no trips exceed 25 km/h and
+that all trips have a minimum dwell time of 30 seconds to allow
+passengers to board and alight.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>gtfs <span class="ot">&lt;-</span> <span class="fu">fix_gtfs</span>(gtfs, <span class="at">max_speed =</span> <span class="dv">25</span>, <span class="at">min_dwell_time =</span> <span class="dv">30</span>)</span></code></pre></div>
+<p>obs. in this case, <code>fix_gtfs()</code> throws two warnings that
+refer to a few late night trips whose times go back to “00:00:00” after
+midnight. These trips depart outside the time of day used below, so they
+don’t affect the network.</p>
+</div>
+<div id="building-a-gmns-network" class="section level1">
+<h1>Building a GMNS network</h1>
+<p>By default, <code>build_graph()</code> returns the GMNS
+<code>node</code>, <code>link</code> and <code>config</code> tables:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>g_gmns <span class="ot">&lt;-</span> <span class="fu">build_graph</span>(</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>  gtfs, </span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  <span class="at">from =</span> <span class="st">&quot;07:00:00&quot;</span>, </span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>  <span class="at">to =</span> <span class="st">&quot;10:00:00&quot;</span>, </span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>  <span class="at">format =</span> <span class="st">&quot;gmns&quot;</span></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>  )</span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="fu">head</span>(g_gmns<span class="sc">$</span>node)</span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a><span class="co">#&gt;    node_id   x_coord   y_coord node_type parent_node_id stop_id</span></span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a><span class="co">#&gt;      &lt;int&gt;     &lt;num&gt;     &lt;num&gt;    &lt;char&gt;          &lt;int&gt;  &lt;char&gt;</span></span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a><span class="co">#&gt; 1:       1 -51.20856 -30.14726      stop             NA    1065</span></span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a><span class="co">#&gt; 2:       2 -51.20095 -30.15292      stop             NA     126</span></span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a><span class="co">#&gt; 3:       3 -51.24399 -30.07915      stop             NA    1323</span></span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a><span class="co">#&gt; 4:       4 -51.24321 -30.07709      stop             NA    1326</span></span>
+<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a><span class="co">#&gt; 5:       5 -51.23117 -30.06218      stop             NA    1427</span></span>
+<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a><span class="co">#&gt; 6:       6 -51.23059 -30.06072      stop             NA    1434</span></span>
+<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a><span class="co">#&gt;                    stop_name route_id direction_id inferred_direction visit</span></span>
+<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a><span class="co">#&gt;                       &lt;char&gt;   &lt;char&gt;        &lt;int&gt;              &lt;int&gt; &lt;int&gt;</span></span>
+<span id="cb3-19"><a href="#cb3-19" tabindex="-1"></a><span class="co">#&gt; 1:              JUCA BATISTA     &lt;NA&gt;           NA                 NA    NA</span></span>
+<span id="cb3-20"><a href="#cb3-20" tabindex="-1"></a><span class="co">#&gt; 2:              JUCA BATISTA     &lt;NA&gt;           NA                 NA    NA</span></span>
+<span id="cb3-21"><a href="#cb3-21" tabindex="-1"></a><span class="co">#&gt; 3:            PINHEIRO BORDA     &lt;NA&gt;           NA                 NA    NA</span></span>
+<span id="cb3-22"><a href="#cb3-22" tabindex="-1"></a><span class="co">#&gt; 4:            PINHEIRO BORDA     &lt;NA&gt;           NA                 NA    NA</span></span>
+<span id="cb3-23"><a href="#cb3-23" tabindex="-1"></a><span class="co">#&gt; 5: MENINO DEUS PADRE CACIQUE     &lt;NA&gt;           NA                 NA    NA</span></span>
+<span id="cb3-24"><a href="#cb3-24" tabindex="-1"></a><span class="co">#&gt; 6: MENINO DEUS PADRE CACIQUE     &lt;NA&gt;           NA                 NA    NA</span></span>
+<span id="cb3-25"><a href="#cb3-25" tabindex="-1"></a></span>
+<span id="cb3-26"><a href="#cb3-26" tabindex="-1"></a><span class="fu">head</span>(g_gmns<span class="sc">$</span>link)</span>
+<span id="cb3-27"><a href="#cb3-27" tabindex="-1"></a><span class="co">#&gt;    link_id from_node_id to_node_id directed    length free_speed  link_type</span></span>
+<span id="cb3-28"><a href="#cb3-28" tabindex="-1"></a><span class="co">#&gt;      &lt;int&gt;        &lt;int&gt;      &lt;int&gt;   &lt;lgcl&gt;     &lt;num&gt;      &lt;num&gt;     &lt;char&gt;</span></span>
+<span id="cb3-29"><a href="#cb3-29" tabindex="-1"></a><span class="co">#&gt; 1:       1          184        185     TRUE  965.4371   21.85895 in_vehicle</span></span>
+<span id="cb3-30"><a href="#cb3-30" tabindex="-1"></a><span class="co">#&gt; 2:       2          185        201     TRUE 1279.7466   22.80737 in_vehicle</span></span>
+<span id="cb3-31"><a href="#cb3-31" tabindex="-1"></a><span class="co">#&gt; 3:       3          186        187     TRUE  241.8582   24.41186 in_vehicle</span></span>
+<span id="cb3-32"><a href="#cb3-32" tabindex="-1"></a><span class="co">#&gt; 4:       4          187        338     TRUE  510.1041   24.59430 in_vehicle</span></span>
+<span id="cb3-33"><a href="#cb3-33" tabindex="-1"></a><span class="co">#&gt; 5:       5          188        189     TRUE  171.8830   24.75115 in_vehicle</span></span>
+<span id="cb3-34"><a href="#cb3-34" tabindex="-1"></a><span class="co">#&gt; 6:       6          189        190     TRUE  307.4807   24.41759 in_vehicle</span></span>
+<span id="cb3-35"><a href="#cb3-35" tabindex="-1"></a><span class="co">#&gt;    travel_time departures route_id direction_id inferred_direction</span></span>
+<span id="cb3-36"><a href="#cb3-36" tabindex="-1"></a><span class="co">#&gt;          &lt;num&gt;      &lt;int&gt;   &lt;char&gt;        &lt;int&gt;              &lt;int&gt;</span></span>
+<span id="cb3-37"><a href="#cb3-37" tabindex="-1"></a><span class="co">#&gt; 1:   2.6500000         17      R10            1                 NA</span></span>
+<span id="cb3-38"><a href="#cb3-38" tabindex="-1"></a><span class="co">#&gt; 2:   3.3666667         17      R10            1                 NA</span></span>
+<span id="cb3-39"><a href="#cb3-39" tabindex="-1"></a><span class="co">#&gt; 3:   0.5944444          6      176            0                 NA</span></span>
+<span id="cb3-40"><a href="#cb3-40" tabindex="-1"></a><span class="co">#&gt; 4:   1.2444444          6      176            0                 NA</span></span>
+<span id="cb3-41"><a href="#cb3-41" tabindex="-1"></a><span class="co">#&gt; 5:   0.4166667          6      176            0                 NA</span></span>
+<span id="cb3-42"><a href="#cb3-42" tabindex="-1"></a><span class="co">#&gt; 6:   0.7555556          6      176            0                 NA</span></span>
+<span id="cb3-43"><a href="#cb3-43" tabindex="-1"></a></span>
+<span id="cb3-44"><a href="#cb3-44" tabindex="-1"></a>g_gmns<span class="sc">$</span>link <span class="sc">|&gt;</span></span>
+<span id="cb3-45"><a href="#cb3-45" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">count</span>(link_type)</span>
+<span id="cb3-46"><a href="#cb3-46" tabindex="-1"></a><span class="co">#&gt;     link_type     n</span></span>
+<span id="cb3-47"><a href="#cb3-47" tabindex="-1"></a><span class="co">#&gt;        &lt;char&gt; &lt;int&gt;</span></span>
+<span id="cb3-48"><a href="#cb3-48" tabindex="-1"></a><span class="co">#&gt; 1:  alighting   188</span></span>
+<span id="cb3-49"><a href="#cb3-49" tabindex="-1"></a><span class="co">#&gt; 2:   boarding   185</span></span>
+<span id="cb3-50"><a href="#cb3-50" tabindex="-1"></a><span class="co">#&gt; 3: in_vehicle   185</span></span>
+<span id="cb3-51"><a href="#cb3-51" tabindex="-1"></a><span class="co">#&gt; 4:   transfer   302</span></span></code></pre></div>
+<p>The tables can be written to the CSV files of a GMNS network with
+<code>data.table::fwrite()</code>, as shown in the examples of
+<code>build_graph()</code>, and then read by other modelling
+software.</p>
+</div>
+<div id="building-and-igraph-and-calculating-the-centrality-of-stops" class="section level1">
+<h1>Building and igraph and Calculating the centrality of stops</h1>
+<p>With <code>format = &quot;igraph&quot;</code>, the network is returned as an
+<code>{igraph}</code> graph, whose links have the travel time as an
+attribute. We use it to calculate the shortest travel times between
+every pair of stops, which include the waiting time at the stops where
+vehicles are boarded:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">library</span>(igraph)</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>g_igraph <span class="ot">&lt;-</span> <span class="fu">build_graph</span>(</span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>  gtfs, </span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>  <span class="at">from =</span> <span class="st">&quot;07:00:00&quot;</span>, </span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>  <span class="at">to =</span> <span class="st">&quot;10:00:00&quot;</span>, </span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>  <span class="at">format =</span> <span class="st">&quot;igraph&quot;</span></span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>  )</span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a></span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a><span class="co"># get stop nodes</span></span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a>stop_nodes <span class="ot">&lt;-</span> igraph<span class="sc">::</span><span class="fu">V</span>(g_igraph)[node_type <span class="sc">==</span> <span class="st">&quot;stop&quot;</span>]</span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a></span>
+<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a><span class="co"># get travel times between stops</span></span>
+<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a>travel_times <span class="ot">&lt;-</span> igraph<span class="sc">::</span><span class="fu">distances</span>(</span>
+<span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a>  g_igraph,</span>
+<span id="cb4-16"><a href="#cb4-16" tabindex="-1"></a>  <span class="at">v =</span> stop_nodes,</span>
+<span id="cb4-17"><a href="#cb4-17" tabindex="-1"></a>  <span class="at">to =</span> stop_nodes,</span>
+<span id="cb4-18"><a href="#cb4-18" tabindex="-1"></a>  <span class="at">mode =</span> <span class="st">&quot;out&quot;</span>,</span>
+<span id="cb4-19"><a href="#cb4-19" tabindex="-1"></a>  <span class="at">weights =</span> igraph<span class="sc">::</span><span class="fu">E</span>(g_igraph)<span class="sc">$</span>travel_time</span>
+<span id="cb4-20"><a href="#cb4-20" tabindex="-1"></a>)</span>
+<span id="cb4-21"><a href="#cb4-21" tabindex="-1"></a></span>
+<span id="cb4-22"><a href="#cb4-22" tabindex="-1"></a><span class="co"># travel time from one stop to itself is NA</span></span>
+<span id="cb4-23"><a href="#cb4-23" tabindex="-1"></a><span class="co"># an `Inf` value means {igraph} found no path for a given origin-destination pair.</span></span>
+<span id="cb4-24"><a href="#cb4-24" tabindex="-1"></a><span class="fu">diag</span>(travel_times) <span class="ot">&lt;-</span> <span class="cn">NA</span></span></code></pre></div>
+<p>From these travel times, we calculate the closeness centrality of
+each stop, which tell us how close a node is to all other nodes in the
+network. To do this, we calculate harmonic mean of the inverse of the
+travel times between each stop and the other stops. Stops that can’t be
+reached count as 0. We don’t use the centrality functions of
+<code>{igraph}</code>, such as <code>closeness()</code>, because they
+would also take the service nodes as destinations, and because they
+require positive weights, while alighting links have a travel time of 0.
+This sample feed has a single direction of each route, so the closeness
+<em>from</em> a stop depends on how far it is from the end of its
+routes, and the closeness <em>to</em> it on how far it is from their
+start. Hence we average the closeness from and to each stop:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>closeness <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>  <span class="at">stop_id =</span> stop_nodes<span class="sc">$</span>stop_id,</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>  <span class="at">stop_name =</span> stop_nodes<span class="sc">$</span>stop_name,</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>  <span class="at">closeness_from =</span> <span class="fu">rowMeans</span>(<span class="dv">1</span> <span class="sc">/</span> travel_times, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>  <span class="at">closeness_to =</span> <span class="fu">colMeans</span>(<span class="dv">1</span> <span class="sc">/</span> travel_times, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>) <span class="sc">|&gt;</span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(<span class="at">closeness =</span> (closeness_from <span class="sc">+</span> closeness_to) <span class="sc">/</span> <span class="dv">2</span>)</span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>closeness <span class="sc">|&gt;</span></span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">slice_max</span>(closeness, <span class="at">n =</span> <span class="dv">10</span>)</span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a><span class="co">#&gt;     stop_id                           stop_name closeness_from closeness_to</span></span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a><span class="co">#&gt; 109    5065         TRES FIGUEIRAS CARLOS GOMES     0.05738224   0.04751497</span></span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a><span class="co">#&gt; 70     2920         TRES FIGUEIRAS CARLOS GOMES     0.05720156   0.04733027</span></span>
+<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a><span class="co">#&gt; 105    5056             PETROPOLIS CARLOS GOMES     0.04954473   0.04768110</span></span>
+<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a><span class="co">#&gt; 66     2874         TRES FIGUEIRAS CARLOS GOMES     0.04929724   0.04754615</span></span>
+<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a><span class="co">#&gt; 139    6133 JARDIM BOTANICO SENADOR TARSO DUTRA     0.04830932   0.04290521</span></span>
+<span id="cb5-17"><a href="#cb5-17" tabindex="-1"></a><span class="co">#&gt; 64     2849 JARDIM BOTANICO SENADOR TARSO DUTRA     0.04824188   0.04296696</span></span>
+<span id="cb5-18"><a href="#cb5-18" tabindex="-1"></a><span class="co">#&gt; 42     1784        MEDIANEIRA DR CARLOS BARBOSA     0.03520531   0.04540470</span></span>
+<span id="cb5-19"><a href="#cb5-19" tabindex="-1"></a><span class="co">#&gt; 41     1783        MEDIANEIRA DR CARLOS BARBOSA     0.03464400   0.04498900</span></span>
+<span id="cb5-20"><a href="#cb5-20" tabindex="-1"></a><span class="co">#&gt; 157    6414          MENINO DEUS PRAIA DE BELAS     0.03057636   0.04848460</span></span>
+<span id="cb5-21"><a href="#cb5-21" tabindex="-1"></a><span class="co">#&gt; 62     2702  JARDIM BOTANICO DR SALVADOR FRANCA     0.04206430   0.03652148</span></span>
+<span id="cb5-22"><a href="#cb5-22" tabindex="-1"></a><span class="co">#&gt;      closeness</span></span>
+<span id="cb5-23"><a href="#cb5-23" tabindex="-1"></a><span class="co">#&gt; 109 0.05244860</span></span>
+<span id="cb5-24"><a href="#cb5-24" tabindex="-1"></a><span class="co">#&gt; 70  0.05226592</span></span>
+<span id="cb5-25"><a href="#cb5-25" tabindex="-1"></a><span class="co">#&gt; 105 0.04861292</span></span>
+<span id="cb5-26"><a href="#cb5-26" tabindex="-1"></a><span class="co">#&gt; 66  0.04842169</span></span>
+<span id="cb5-27"><a href="#cb5-27" tabindex="-1"></a><span class="co">#&gt; 139 0.04560726</span></span>
+<span id="cb5-28"><a href="#cb5-28" tabindex="-1"></a><span class="co">#&gt; 64  0.04560442</span></span>
+<span id="cb5-29"><a href="#cb5-29" tabindex="-1"></a><span class="co">#&gt; 42  0.04030501</span></span>
+<span id="cb5-30"><a href="#cb5-30" tabindex="-1"></a><span class="co">#&gt; 41  0.03981650</span></span>
+<span id="cb5-31"><a href="#cb5-31" tabindex="-1"></a><span class="co">#&gt; 157 0.03953048</span></span>
+<span id="cb5-32"><a href="#cb5-32" tabindex="-1"></a><span class="co">#&gt; 62  0.03929289</span></span></code></pre></div>
+</div>
+<div id="plotting-the-network-with-tidygraph-sfnetworks-and-ggraph" class="section level1">
+<h1>Plotting the network with tidygraph, sfnetworks and ggraph</h1>
+<p>With <code>format = &quot;tidygraph&quot;</code>, the network is returned as a
+<code>{tidygraph}</code> graph, whose nodes have the coordinates of
+their stops. These coordinates can be used to plot the network with
+<code>{ggraph}</code>:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="fu">library</span>(ggraph)</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="fu">library</span>(tidygraph)</span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="fu">library</span>(sfnetworks)</span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>a <span class="ot">&lt;-</span> <span class="fu">build_graph</span>(gtfs, <span class="at">from =</span> <span class="st">&quot;08:00:00&quot;</span>, <span class="at">to =</span> <span class="st">&quot;10:00:00&quot;</span>, <span class="at">format =</span> <span class="st">&quot;tidygraph&quot;</span>)</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>a</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="co">#&gt; # A tbl_graph: 371 nodes and 860 edges</span></span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="co">#&gt; #</span></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="co">#&gt; # A directed simple graph with 1 component</span></span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="co">#&gt; #</span></span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="co">#&gt; # Node Data: 371 × 12 (active)</span></span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="co">#&gt;    name  node_id x_coord y_coord node_type parent_node_id stop_id stop_name     </span></span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="co">#&gt;    &lt;chr&gt;   &lt;int&gt;   &lt;dbl&gt;   &lt;dbl&gt; &lt;chr&gt;              &lt;int&gt; &lt;chr&gt;   &lt;chr&gt;         </span></span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a><span class="co">#&gt;  1 1           1   -51.2   -30.1 stop                  NA 1065    JUCA BATISTA  </span></span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a><span class="co">#&gt;  2 2           2   -51.2   -30.2 stop                  NA 126     JUCA BATISTA  </span></span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a><span class="co">#&gt;  3 3           3   -51.2   -30.1 stop                  NA 1323    PINHEIRO BORDA</span></span>
+<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a><span class="co">#&gt;  4 4           4   -51.2   -30.1 stop                  NA 1326    PINHEIRO BORDA</span></span>
+<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a><span class="co">#&gt;  5 5           5   -51.2   -30.1 stop                  NA 1427    MENINO DEUS P…</span></span>
+<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a><span class="co">#&gt;  6 6           6   -51.2   -30.1 stop                  NA 1434    MENINO DEUS P…</span></span>
+<span id="cb7-16"><a href="#cb7-16" tabindex="-1"></a><span class="co">#&gt;  7 7           7   -51.2   -30.1 stop                  NA 1436    PRAIA DE BELAS</span></span>
+<span id="cb7-17"><a href="#cb7-17" tabindex="-1"></a><span class="co">#&gt;  8 8           8   -51.2   -30.1 stop                  NA 1443    JOSE DE ALENC…</span></span>
+<span id="cb7-18"><a href="#cb7-18" tabindex="-1"></a><span class="co">#&gt;  9 9           9   -51.2   -30.1 stop                  NA 1444    JOSE DE ALENC…</span></span>
+<span id="cb7-19"><a href="#cb7-19" tabindex="-1"></a><span class="co">#&gt; 10 10         10   -51.2   -30.1 stop                  NA 1448    PRAIA DE BELAS</span></span>
+<span id="cb7-20"><a href="#cb7-20" tabindex="-1"></a><span class="co">#&gt; # ℹ 361 more rows</span></span>
+<span id="cb7-21"><a href="#cb7-21" tabindex="-1"></a><span class="co">#&gt; # ℹ 4 more variables: route_id &lt;chr&gt;, direction_id &lt;int&gt;,</span></span>
+<span id="cb7-22"><a href="#cb7-22" tabindex="-1"></a><span class="co">#&gt; #   inferred_direction &lt;int&gt;, visit &lt;int&gt;</span></span>
+<span id="cb7-23"><a href="#cb7-23" tabindex="-1"></a><span class="co">#&gt; #</span></span>
+<span id="cb7-24"><a href="#cb7-24" tabindex="-1"></a><span class="co">#&gt; # Edge Data: 860 × 14</span></span>
+<span id="cb7-25"><a href="#cb7-25" tabindex="-1"></a><span class="co">#&gt;    from    to link_id from_node_id to_node_id directed length free_speed</span></span>
+<span id="cb7-26"><a href="#cb7-26" tabindex="-1"></a><span class="co">#&gt;   &lt;int&gt; &lt;int&gt;   &lt;int&gt;        &lt;int&gt;      &lt;int&gt; &lt;lgl&gt;     &lt;dbl&gt;      &lt;dbl&gt;</span></span>
+<span id="cb7-27"><a href="#cb7-27" tabindex="-1"></a><span class="co">#&gt; 1   184   185       1          184        185 TRUE       965.       21.9</span></span>
+<span id="cb7-28"><a href="#cb7-28" tabindex="-1"></a><span class="co">#&gt; 2   185   201       2          185        201 TRUE      1280.       22.8</span></span>
+<span id="cb7-29"><a href="#cb7-29" tabindex="-1"></a><span class="co">#&gt; 3   186   187       3          186        187 TRUE       242.       24.4</span></span>
+<span id="cb7-30"><a href="#cb7-30" tabindex="-1"></a><span class="co">#&gt; # ℹ 857 more rows</span></span>
+<span id="cb7-31"><a href="#cb7-31" tabindex="-1"></a><span class="co">#&gt; # ℹ 6 more variables: link_type &lt;chr&gt;, travel_time &lt;dbl&gt;, departures &lt;int&gt;,</span></span>
+<span id="cb7-32"><a href="#cb7-32" tabindex="-1"></a><span class="co">#&gt; #   route_id &lt;chr&gt;, direction_id &lt;int&gt;, inferred_direction &lt;int&gt;</span></span>
+<span id="cb7-33"><a href="#cb7-33" tabindex="-1"></a></span>
+<span id="cb7-34"><a href="#cb7-34" tabindex="-1"></a><span class="fu">ggraph</span>(a, <span class="at">layout =</span> <span class="st">&quot;manual&quot;</span>, <span class="at">x =</span> x_coord, <span class="at">y =</span> y_coord) <span class="sc">+</span></span>
+<span id="cb7-35"><a href="#cb7-35" tabindex="-1"></a>  <span class="fu">geom_edge_link</span>() <span class="sc">+</span></span>
+<span id="cb7-36"><a href="#cb7-36" tabindex="-1"></a>  <span class="fu">geom_node_point</span>()</span></code></pre></div>
+<p><img role="img" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAqAAAAHgCAMAAABNUi8GAAAACVBMVEUAAADr6+v///+hJBRkAAAACXBIWXMAAA7DAAAOwwHHb6hkAAARNklEQVR4nO3d23ajOBBGYZj3f+hZHZ8AGxtJJdVfpb1vpiedQNn6AviQ9PIfkXCL9wBE3wIoSQdQkg6gJB1ASTqAknQPoCuRUgAl6QBK0gGUpAMoSQdQkg6gJB1ASTqAknQAJekAStIBlKQDKEkHUJIOoCQdQEk6gJJ0ACXpAErSAdSwZVm8R0gXQO1aFoSaB1C7ANohgJq1ALRDALUKn10CqFX47BJAjeIA2ieAmvTPJj57BNC2/lRCs18AbWrhzN45gDYFz94BtKll16e/dhgqVQBta0vwjSrH1/YA2qOvh9XtZx3/BOhjAO3Y8rHd3+7/xCH3LYD27OS69HsOcwoHULfOjqAQ3QZQv06vQTH6CqCacSC9B1DZ/oxO7xSgynFJClDtAApQ6QAKUO0AClDppj+EAlQ7gAJUOoACVLvJfQJUvrl9AlQ+gAJUOU7xAFWOB0kA1ez5xjuAAlSr5f67IHiP/b8AqtYB5uQ+AaoVP510DKBKbWzi8xZAleLQ+RZAlYLnWwCVCqDHACoVQI8BVCqAHgOoVFyEHgOoVgA9BFCtAHoIoGLhcx9A5ULoNoDqhdBNABWM69BXABWMR0qvACoYQF8BVDDe1PQKoIoh9BlARQPoLYCKBtBbAFWNs/xfEwCNu8oInQFo4FUOPLpZ2YGGPlHyYD430OfP74ZdYoRmBbpd19gLDNB0QN+XNPICAzQV0M/LGXmFAZoF6LertcgrPLnQHEB/LWL0BZ5YaHiglx7mhl/feY+iEYFuH59fW7fwqzvveT4a0Oczg2VLFn1xARoE6PKs8Ov6jDMsgEYDWvp1XaYZ2LRCgwIt/7oe0wxuSqPBgFa/bplhZac8ikYDWluGhQUoQKUDaGagGVZ2RqGzAE1xCP3XbEIBGq3JhAI0XHMJnQdonmVNdFN+Fxdo6eOFRKs6k9CwQEsf0aZ6/DvRw/lZgCZb0mQ350sADVmym/OlsEALz9nJVjTZzflSXKBlj3qyrWi223NaVqBvPxqfcEEz3qa34gL9/mOct7Vb9g2bbVBZb9e2wEC//uXb0mVcx7TfeZsyAs17yDw0w+3MBvSxXo8z/NiZRjfBt2IKoPcF+rBSmZfu3vNiO+etzQD063Ek46J9LOmhNCrQ11L8PMklXLXPAVSn5a0fnz0DU4DqVOTz+flDRnMs403MAfTiF/Sfy7WUNzAk0MLD5+tLuk/mWsqbFw7o1mUJutvndx3Nu5S3LhrQ/UGz9KCY+iCa87aFBPr6n4qvNx1HqZy3LCTQ51OgdRuwnEeonLcrGtDtc5q1v+gu50omvVnhgN5qelCe8yCa8TatYYE2PrGZUWjCm/SvOYEmfPEz023ZNinQfM/cJ7opu8ICbT4A5gKa6Kbsiwu0lWgyoN4D9CowUIuTvNkw3uW5JYcmBrrmWdZM32qH5gaaRGiuq5V9gYFaHDdyrCtARUPoX9meMdsVGajJusRf23SvOewCaHShsaf/GUBjAw09/JUiAzVZncBAA49+vdhATTYSdZGn8AlQu82MDqDyWQGNucwAVc9seUIu8xw+YwM121DAhY44c00A/dtSuOUON3BtAF0Dni1jTdtUXKCGpqIBDTVsY2GBWqIKBjTSrM0B1Hhb/Qs0qkEAvW/MalPdCzSqRaGB2m3MbEtdS/3Gz5OiAjU+gFptqWsT8gTobWNWG+obQAEqHUADATV9GtRqQ52b0WdUoDM+go8yp20xgRqe7GKcN2NM2SOARlj6GZ9fugfQCEsP0HmBhrgGBWgsoMbLpb/y8/oMCdR6ueTXXn7AjgF0lT+EzuwzIlD7CzJtAFP7DAi0xwMGZQJz+4wK1HqbxtuzauIHR48A+rdN4+0Zhc+AQLssmigDgMYD2mnNFBksEz89/wqgt83ab7I1fP4F0Pt2O2yzLXj+FRLoFE80AfSvYEDvS7ZfvOX10foNt83VI3z+KxrQ+3+2x9Hjfz9/4ftf7T+kh0FvIo8iAb0B3J3jl2NvX/H60ve/235Ij4PeRB4FAnqAuf/4+gHr/dNPPr48vd+34nKjzpMbyKdoQE/+Yvff/Vecnf6Ph101D2rzOJUB6JWvOLsGlQXKAfRWGKCfLjGvfNGlzS5XPnVsWtP4FQVoDc+rG1Z81UZqGM+CAO0OSAuo0izOAXS7AxEWQqO4FwLoCD1KQnUm8S8C0EF2dFjoTOJfGKBpdnMhmUEECgB01LlXBqjGFCLJA11uL1YO2pWCDYUZdNIGOhqMAlH3AbRSBjoey+5qwskqPnfJAnU5lm3fP+J0NMXnPlGgXmfah8rd+5zGDjB8l9qpAXV+48b+DD9+DHweEwPq/nLO9j32g2fxvumaKQL1HeDt/+d6kkstLaDuB9D3BynDRvK/6ZLJAL1DcF+kT2+8B6hfKkB1lufzIbT7cDp3gFYAPXby8/Od5xO58XqJABW4+Hz09Zc/9HoSTOS2C6YBVOHi89nXOezP90Lfm4pJANVanx/TGHuC5/cEgMotEECF8geqtzxXDqEmU2/emkInuQNVXJ2fI7WoWja/9mzz//Q5Z6Cai2MK9PCZHDXL8gWqukyXfmHOxU1tPhWc5bkBvb2uOWx3ZV07hH4Y//1jy7aVB0WleQHVXqcro326BZuPHWFuP8doyikC6MeuAj1v+3kdB00fQD92YbYfR1CyyQmo/EpeO4Re+hi15ANUfxnlB5wlD6D6PFeEquQANIRPgIo0HGgMnitCRRoNNIxPgGo0EGi0V/kCjZq4cUCD8QSoRgA9Lda0WQPoebGmTdpYoP223qNo86ZsGNCIqx3uWyphg4CGXOp4FyUJGwM05lLHnDpZAD2Ln86QCKCfW3x/0zM9GncNGmitQw2bvJFPM/XbtmnwVGocUPnnvZ8/dek9CG0aCVR75XlQJNlAoOIXovCUbDRQXQLa000bQG9J/QpdejUcqOQTjGLj0KuRQDf/HIGUUKVZ6NBQoI+kgOpMQh+aHajKHHSSC1CZn59TmIG+5gNU4yDqPgD9bl6g8AzRrEDhGSQnoO4+HfdNJTk+SBqzq8+799s3lTUhUHhGajqg8IyV3zXooD0d9+uyW6rO6wg6Zj8au6WGnICO2c1hp/AMmAdQl/M7PGPmANTjERI8ozYFUHjGbQKg8IzceKCDfcIzdsOBjvUJz+ilBgrP+CUGCs8MjQY6zCc8czQY6Cg28MzSWKCc3KmwoUA5uVNp44AOuviEZ66GAR3z6Aie2UoFFJ756g/08evs+gPFZ8K6Ax32KxfhmbIxQM23+mE3/fdBDvUGOubXhMEzbX2BLkN+szY8E9cTKE98UnP9gMKTDOoFFJ5kkj3QMdedtz0N2An5Zg502G/3hucU9QFqMNjP3fTfBwlkDZTnPcm0LkAtBvu6j847IJ3iAYXnVBkD7e4TnpNlC7Qjn/s7orptnzSzA9r34Knyb9PR4MyAdgaEz0kDKElnBbT7KRigc2YDdNDr7widLwOg/Lo66lcT0HFvXHrtceDOSKAWoB5P/SB0spqB9hrsfKej90ieNQB1eu4coVNVBfRx7enzzA9CZ6oGqPfLjgidqGqgvQf7PoDn3mlkIYEidJ6qr0Gd85+AhlQHtPNQV0LoHFWe4nuPdSGJIah3FUD9L0FviYxBXQsOVGEO6hlASbpyoDIuZAahjgUGKvJgjboWGSiP5Ceo7hq0+1hX05mE+lQMVIknQPNXClTpBL9yjs9feKBCw1CHYgPVmoY6VAN0xFzXAmj6ioDKcQBo+kqACnIQHIlMCw70X4ozkVUJgCI0c6XXoIPGKkt0LDKo+FH8iKGKQ2jaYj/N9ExyKDIo9hP1rxRnIoOyAOUYmrQ0QDmG5qwUqPsvZjpPcihqrBio7kFUcihqLBFQhGYsE1CEJqwCqOpzoStCE1YDdOVFTxpVHVDO8jSobEARmqwGoKISVOeiqhquQVWJio5FVVUCvSVKQXQsqqkJqOpBVHIoqqoNqOrRSnMqqqgVqOhBVHEmqqkZqOjhSnEmqsgAqOZBVHAkqsgCqORBVHAkqsgGqOQz93oTUXlGQLevfqq4EPyeoeJsgS6rkAuZQaghY6CPnh8zGrN6Isf9k0VmQNfNGf5Ow1sIPhNkB/TZ5kzvTASg8esA9Jk/UYCGryfQ9Xmi9zrdAjR8XYE+cjuUAjR8Q4C6PV7iIjR8I4FyCKXiBgH1+hkRgEZvFNBbw5kCNHpjgQ4/13MRGr3RQEc/XAJo8ABK0g0H+roOHQIVoMEbD/TWqOfuuQgNnhfQYed6gMbOGWh/owCNnR/QxzVoZ6QAjZ0j0Fc9jXIRGjsJoP9aXgdU4w3bbo7GJgN03fxYkylTgIZOCei/bkAtHz0BNHSSQE0f3nMRGjo1oK8fEzH76WWARk4O6K3NU1DNh1OARk4U6CaATp0+0O35vk4qQgMXAGjzb4IAaOAiAH32BFrmFKCBiwe0/EgK0MCFArp7cL9eP5AiNG6xgN4rPZACNG4hgW4fNl369M7jUL9iAr11+a0lAI1bZKC755++f+KYeci+0EDvATRxACXpEgC98FgJoGGLD/TSY3mERi0u0N078n5+cv95qEthge5e9gRo2oIDvf/p92d3n4f6FBtowaf3m4R6FhZo4W97AGjQ4gJdi4wCNGjhgV6Uxw8fB20eoAgNWXyg195w1/iToeRVaKDXhQI0arGBXoZX/yOh5NskQAf9tlwyLzjQmn+MAaSRig50rbq+5HQfpjmBPr7Mfhgybl6gjy+1HYaMSwC07R8Fw6h2GYCurReVINUNoJstGA1DhgH0sBWDYciwJEDN3gyCUbGyALV8xydIhQLo543dkCLVvURAzf8NRd5fIlAaoD0wAdS/vEANbPEmPf/SAt39fy2y5fn7HRuno9rSAD0i3AJ9/rnlBdGm4ai2NECPhJazrHZAvzO4z7IAfbe3P8M/njVqucc41RdmcQGfF+jhb9fmQ+hjQ3S1191df7/NAXT7Sa3CMHo5i2urLECvuTF60gijF3s9NgXohdc6DZ/UhGhRDUfRREB/CTU2hdGCtofStei+mwOo4bHzsFnzbaav8GCaCujZre7D87VLoJZ1W49r91oioOcM+wFdn0eEXpvPWMkj+wmAdhcE0NKez0v//tT8QPsf4SxeAZivi/dZIqAnFzUD7Bweo9Klrp3oEwH1uAB1313wfgtNA/T8Zo4Xwxn/ctMA/XI7nbTY7jYreID6nnStdl11G/RRT3QNKgrUav+vBxTXt/T67M1XvW1g8H2zGWm59GRTCqA/lk7hkrB2hI3M5e0D19ru+22MwXfN+/fZr91nAPrzTlYQemGM7V+WruPZ7i6JLt1yfeW7A+jgzkcxN7NsD7onex91z2y/V4q+cAqg7pehxz7O02/Ib0fi5fLbNhoneB7Py74yAdB4Pv96DrU7EfsN03v7lXuIDzSoz1u7c7rvlD333vDNB1DvhKazn+N+AdFwFZEfqO+583dS0xmPYnDXxwf649UadZ/eZ/ZjptMY3PUJgK5fz03qPAUzu8Msjg05gH4RCtCKTO4ymyewkgD9cp7HZ1Wtd5vV3Z4J6JnQsZPkqYWY2VEhPVAOoA3V3nmG93l2oFyCNlZx95ne4VmAnl2EArS5wjvQ+P5OA3Q9GN2+wu04U4oK7kPzezsb0GX756q3z9Cnft+NNs8qvZUO6DbvgXLl857bdEA//JmM+naX9rrDMwE9/syE4yRpe79bl8dbBQFKCh0c9r7YByiVtgPZ+1oKoFTRuEejAKWqnjA7X+wDlKoa9TQJQKmuQU+TAJSkAyhJB1CSDqAkHUBJOoCSdAAl6QBK0gGUpAMoSQdQkg6gJB1ASTqAknQAJekAStIBlKQDKEl3BEokGUBJOoCSdAAl6QBK0gGUpAMoSQdQku5/m0gawKXGraQAAAAASUVORK5CYII=" /><!-- --></p>
+<p>This plot treats longitudes and latitudes as plain coordinates. To
+work with the network as spatial data, we convert it into an
+<code>{sfnetworks}</code> network, in which nodes are points and links
+are lines. Since boarding and alighting links connect nodes at the same
+place, we keep only the in-vehicle and transfer links, and place the
+in-vehicle links last, so that they are drawn on top:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>net <span class="ot">&lt;-</span> a <span class="sc">|&gt;</span></span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>  tidygraph<span class="sc">::</span><span class="fu">activate</span>(<span class="st">&quot;edges&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(link_type <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">&quot;in_vehicle&quot;</span>, <span class="st">&quot;transfer&quot;</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(dplyr<span class="sc">::</span><span class="fu">desc</span>(link_type)) <span class="sc">|&gt;</span></span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>  sfnetworks<span class="sc">::</span><span class="fu">as_sfnetwork</span>(</span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>    <span class="at">coords =</span> <span class="fu">c</span>(<span class="st">&quot;x_coord&quot;</span>, <span class="st">&quot;y_coord&quot;</span>),</span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>    <span class="at">crs =</span> <span class="dv">4326</span>,</span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a>    <span class="at">remove =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a>    <span class="at">edges_as_lines =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a>    <span class="at">message =</span> <span class="cn">FALSE</span></span>
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a>  )</span>
+<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a></span>
+<span id="cb8-13"><a href="#cb8-13" tabindex="-1"></a>net</span>
+<span id="cb8-14"><a href="#cb8-14" tabindex="-1"></a><span class="co">#&gt; # A sfnetwork with 371 nodes and 487 edges</span></span>
+<span id="cb8-15"><a href="#cb8-15" tabindex="-1"></a><span class="co">#&gt; #</span></span>
+<span id="cb8-16"><a href="#cb8-16" tabindex="-1"></a><span class="co">#&gt; # CRS:  EPSG:4326 </span></span>
+<span id="cb8-17"><a href="#cb8-17" tabindex="-1"></a><span class="co">#&gt; #</span></span>
+<span id="cb8-18"><a href="#cb8-18" tabindex="-1"></a><span class="co">#&gt; # A directed simple graph with 61 components with spatially explicit edges</span></span>
+<span id="cb8-19"><a href="#cb8-19" tabindex="-1"></a><span class="co">#&gt; #</span></span>
+<span id="cb8-20"><a href="#cb8-20" tabindex="-1"></a><span class="co">#&gt; # Node data: 371 × 13 (active)</span></span>
+<span id="cb8-21"><a href="#cb8-21" tabindex="-1"></a><span class="co">#&gt;   name  node_id x_coord y_coord node_type parent_node_id stop_id stop_name      </span></span>
+<span id="cb8-22"><a href="#cb8-22" tabindex="-1"></a><span class="co">#&gt;   &lt;chr&gt;   &lt;int&gt;   &lt;dbl&gt;   &lt;dbl&gt; &lt;chr&gt;              &lt;int&gt; &lt;chr&gt;   &lt;chr&gt;          </span></span>
+<span id="cb8-23"><a href="#cb8-23" tabindex="-1"></a><span class="co">#&gt; 1 1           1   -51.2   -30.1 stop                  NA 1065    JUCA BATISTA   </span></span>
+<span id="cb8-24"><a href="#cb8-24" tabindex="-1"></a><span class="co">#&gt; 2 2           2   -51.2   -30.2 stop                  NA 126     JUCA BATISTA   </span></span>
+<span id="cb8-25"><a href="#cb8-25" tabindex="-1"></a><span class="co">#&gt; 3 3           3   -51.2   -30.1 stop                  NA 1323    PINHEIRO BORDA </span></span>
+<span id="cb8-26"><a href="#cb8-26" tabindex="-1"></a><span class="co">#&gt; 4 4           4   -51.2   -30.1 stop                  NA 1326    PINHEIRO BORDA </span></span>
+<span id="cb8-27"><a href="#cb8-27" tabindex="-1"></a><span class="co">#&gt; 5 5           5   -51.2   -30.1 stop                  NA 1427    MENINO DEUS PA…</span></span>
+<span id="cb8-28"><a href="#cb8-28" tabindex="-1"></a><span class="co">#&gt; 6 6           6   -51.2   -30.1 stop                  NA 1434    MENINO DEUS PA…</span></span>
+<span id="cb8-29"><a href="#cb8-29" tabindex="-1"></a><span class="co">#&gt; # ℹ 365 more rows</span></span>
+<span id="cb8-30"><a href="#cb8-30" tabindex="-1"></a><span class="co">#&gt; # ℹ 5 more variables: route_id &lt;chr&gt;, direction_id &lt;int&gt;,</span></span>
+<span id="cb8-31"><a href="#cb8-31" tabindex="-1"></a><span class="co">#&gt; #   inferred_direction &lt;int&gt;, visit &lt;int&gt;, geometry &lt;POINT [°]&gt;</span></span>
+<span id="cb8-32"><a href="#cb8-32" tabindex="-1"></a><span class="co">#&gt; #</span></span>
+<span id="cb8-33"><a href="#cb8-33" tabindex="-1"></a><span class="co">#&gt; # Edge data: 487 × 15</span></span>
+<span id="cb8-34"><a href="#cb8-34" tabindex="-1"></a><span class="co">#&gt;    from    to link_id from_node_id to_node_id directed length free_speed</span></span>
+<span id="cb8-35"><a href="#cb8-35" tabindex="-1"></a><span class="co">#&gt;   &lt;int&gt; &lt;int&gt;   &lt;int&gt;        &lt;int&gt;      &lt;int&gt; &lt;lgl&gt;     &lt;dbl&gt;      &lt;dbl&gt;</span></span>
+<span id="cb8-36"><a href="#cb8-36" tabindex="-1"></a><span class="co">#&gt; 1     3     4     559            3          4 TRUE      242.           5</span></span>
+<span id="cb8-37"><a href="#cb8-37" tabindex="-1"></a><span class="co">#&gt; 2     5     6     560            5          6 TRUE      172.           5</span></span>
+<span id="cb8-38"><a href="#cb8-38" tabindex="-1"></a><span class="co">#&gt; 3     5   151     561            5        151 TRUE       69.1          5</span></span>
+<span id="cb8-39"><a href="#cb8-39" tabindex="-1"></a><span class="co">#&gt; # ℹ 484 more rows</span></span>
+<span id="cb8-40"><a href="#cb8-40" tabindex="-1"></a><span class="co">#&gt; # ℹ 7 more variables: link_type &lt;chr&gt;, travel_time &lt;dbl&gt;, departures &lt;int&gt;,</span></span>
+<span id="cb8-41"><a href="#cb8-41" tabindex="-1"></a><span class="co">#&gt; #   route_id &lt;chr&gt;, direction_id &lt;int&gt;, inferred_direction &lt;int&gt;,</span></span>
+<span id="cb8-42"><a href="#cb8-42" tabindex="-1"></a><span class="co">#&gt; #   geometry &lt;LINESTRING [°]&gt;</span></span></code></pre></div>
+<p><code>net</code> can be used with the functions of
+<code>{sfnetworks}</code> and <code>{sf}</code>, for example to filter
+the network by a spatial extent or to join it with other spatial data.
+It can also be mapped with the <code>&quot;sf&quot;</code> layout of
+<code>{ggraph}</code>:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">ggraph</span>(net, <span class="at">layout =</span> <span class="st">&quot;sf&quot;</span>) <span class="sc">+</span></span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>  <span class="fu">geom_edge_sf</span>(<span class="fu">aes</span>(<span class="at">colour =</span> link_type)) <span class="sc">+</span></span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>  <span class="fu">geom_node_sf</span>(<span class="at">size =</span> <span class="fl">0.5</span>) <span class="sc">+</span></span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>  <span class="fu">scale_edge_colour_manual</span>(</span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>    <span class="at">name =</span> <span class="st">&quot;Link type&quot;</span>,</span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">c</span>(<span class="at">in_vehicle =</span> <span class="st">&quot;#0072B2&quot;</span>, <span class="at">transfer =</span> <span class="st">&quot;#D55E00&quot;</span>),</span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>    <span class="at">labels =</span> <span class="fu">c</span>(<span class="at">in_vehicle =</span> <span class="st">&quot;In-vehicle&quot;</span>, <span class="at">transfer =</span> <span class="st">&quot;Walking transfer&quot;</span>)</span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a>  <span class="fu">theme_void</span>()</span></code></pre></div>
+<p><img role="img" src="data:image/png;base64,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" /><!-- --></p>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

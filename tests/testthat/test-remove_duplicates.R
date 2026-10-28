@@ -23,7 +23,10 @@ test_that("removes duplicates", {
   # remove duplicates from gtfs first, because otherwise the original gtfs would
   # have some duplicated entries and the unduplicated bigger wouldn't
   unique_gtfs <- remove_duplicates(gtfs)
-  bigger_gtfs <- merge_gtfs(unique_gtfs, unique_gtfs)
+  bigger_gtfs <- gtfsio::new_gtfs(
+    lapply(unique_gtfs, function(dt) rbind(dt, dt)),
+    "dt_gtfs"
+  )
   expect_identical(unique_gtfs, remove_duplicates(bigger_gtfs))
 })
 
@@ -34,4 +37,21 @@ test_that("doesn't change original gtfs object", {
 
   unique_gtfs <- remove_duplicates(gtfs)
   expect_identical(original_gtfs, gtfs)
+})
+
+test_that("keeps elements that are not tables as they are", {
+  locations <- list(
+    type = "FeatureCollection",
+    features = list(list(type = "Feature"), list(type = "Feature"))
+  )
+  tidy_element <- list(a = gtfs$agency, b = gtfs$agency)
+
+  list_gtfs <- read_gtfs(data_path)
+  list_gtfs$locations <- locations
+  list_gtfs$. <- tidy_element
+
+  result <- remove_duplicates(list_gtfs)
+  expect_identical(result$locations, locations)
+  expect_identical(result$., tidy_element)
+  expect_identical(result$agency, unique(gtfs$agency))
 })

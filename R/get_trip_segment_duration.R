@@ -9,12 +9,15 @@
 #' @param unit A string representing the time unit in which the duration is
 #'   desired. One of `"s"` (seconds), `"min"` (minutes, the default),
 #'   `"h"` (hours) or `"d"` (days).
-#' @param sort_sequence A logical specifying whether to sort timetables by
-#'   `stop_sequence`. Defaults to `FALSE`, otherwise spec-compliant feeds, in
-#'   which timetables points are already ordered by `stop_sequence`, would be
-#'   penalized through longer processing times. Durations calculated from
-#'   unordered timetables do not correctly depict the real life segment
-#'   durations.
+#' @param sort_sequence Deprecated; do not supply. Timetables are now always
+#'   sorted by `stop_sequence`. Passing `TRUE` raises a warning, and passing
+#'   `FALSE` raises an error.
+#' @param from A string, in the "HH:MM:SS" format. Only segments that depart
+#'   from their first stop at or after `from` are included. If `NULL` (the
+#'   default), there is no lower limit.
+#' @param to A string, in the "HH:MM:SS" format. Only segments that depart from
+#'   their first stop at or before `to` are included. If `NULL` (the default),
+#'   there is no upper limit.
 #'
 #' @return A `data.table` containing the segments' duration of each specified
 #'   trip.
@@ -24,6 +27,17 @@
 #' same trip. The  duration of a segment is defined as the time difference
 #' between its arrival time and its departure time, as specified in the
 #' `stop_times` file.
+#'
+#' Existing `_secs` columns in `stop_times` (e.g. created with
+#' [convert_time_to_seconds()]) are used as-is, not recalculated from the time
+#' strings.
+#'
+#' `from` and `to` are compared with the departure time of the first stop of
+#' each segment, read as the durations are (from `departure_time_secs`, if
+#' present), so use times past `"24:00:00"` for departures after midnight.
+#' For trips listed in `frequencies`, these are template times, not the times
+#' of each departure. Segments whose departure is blank are never included
+#' when `from` or `to` is given.
 #'
 #' @examples
 #' \dontshow{
@@ -45,115 +59,115 @@
 #' trip_segment_dur <- get_trip_segment_duration(gtfs, "CPTM L07-0", unit = "s")
 #' trip_segment_dur
 #'
+#' # use the from and to arguments to keep only the segments that depart
+#' # within a time of day
+#' trip_segment_dur <- get_trip_segment_duration(
+#'   gtfs,
+#'   from = "07:00:00",
+#'   to = "09:00:00"
+#' )
+#' head(trip_segment_dur)
+#'
 #' @export
 get_trip_segment_duration <- function(gtfs,
                                       trip_id = NULL,
                                       unit = "min",
-                                      sort_sequence = FALSE) {
+                                      sort_sequence,
+                                      from = NULL,
+                                      to = NULL) {
+  if (!missing(sort_sequence)) {
+    check_deprecated_sort_sequence(
+      sort_sequence,
+      "get_trip_segment_duration",
+      "stop_sequence"
+    )
+  }
+
   gtfs <- assert_and_assign_gtfs_object(gtfs)
   checkmate::assert_character(trip_id, null.ok = TRUE, any.missing = FALSE)
   checkmate::assert(
     checkmate::check_string(unit),
-    checkmate::check_names(unit, subset.of = c("s", "min", "h", "d")),
+    checkmate::check_names(unit, subset.of = names(dwell_unit_factors)),
     combine = "and"
   )
-  checkmate::assert_logical(sort_sequence, any.missing = FALSE, len = 1)
+  window <- dwell_time_window(from, to)
 
-  req_cols <- c("trip_id", "arrival_time", "departure_time")
-  req_classes <- c("character", "character", "character")
-  if (sort_sequence) {
-    req_cols <- c(req_cols, "stop_sequence")
-    req_classes <- c(req_classes, "integer")
-  }
-  gtfsio::assert_field_class(gtfs, "stop_times", req_cols, req_classes)
+  gtfsio::assert_field_class(
+    gtfs,
+    "stop_times",
+    c("trip_id", "arrival_time", "departure_time", "stop_sequence"),
+    c("character", "character", "character", "integer")
+  )
 
-  # select trip_ids to get segment's duration of and raise warning if a given
-  # trip_id doesn't exist in 'stop_times'
+  # select the trips to get the segments' durations of and raise a warning if
+  # a given trip_id doesn't exist in 'stop_times'
+
+  stop_times <- gtfs$stop_times
 
   if (!is.null(trip_id)) {
-    relevant_trips <- trip_id
+    warn_missing_ids(trip_id, stop_times$trip_id, "stop_times", "trip_id")
 
-    invalid_trip_id <- trip_id[! trip_id %chin% unique(gtfs$stop_times$trip_id)]
+    # the selection index is created outside of `[` so that {data.table}
+    # doesn't add an index to the given table
 
-    if (!identical(invalid_trip_id, character(0))) {
-      warning(
-        "'stop_times' doesn't contain the following trip_id(s): ",
-        paste0("'", invalid_trip_id, "'", collapse = ", ")
-      )
-    }
-
-    durations <- gtfs$stop_times[trip_id %chin% relevant_trips]
-  } else {
-    durations <- gtfs$stop_times
+    is_relevant <- stop_times$trip_id %chin% trip_id
+    stop_times <- stop_times[which(is_relevant)]
   }
 
-  # create auxiliary columns if needed
+  # the times in seconds go into a new table (using the existing '_secs'
+  # columns, if any), so that the given 'stop_times' is never modified.
+  # data.table() copies the vectors, so sorting the new table is safe
 
-  if (!gtfsio::check_field_exists(gtfs, "stop_times", "departure_time_secs")) {
-    durations[, departure_time_secs := string_to_seconds(departure_time)]
-    created_departure_secs <- TRUE
+  durations <- data.table::data.table(
+    trip_id = stop_times$trip_id,
+    stop_sequence = stop_times$stop_sequence,
+    departure_time_secs = time_secs(stop_times, "departure_time"),
+    arrival_time_secs = time_secs(stop_times, "arrival_time")
+  )
+  data.table::setorderv(durations, c("trip_id", "stop_sequence"))
+
+  # each stop but the last of each trip starts a segment, in the order the
+  # segments are returned below. the rows of each trip are contiguous after
+  # sorting, so the last stop is the last row with its trip_id (NAs included)
+
+  is_windowed <- any(is.finite(window))
+  is_last_stop <- !duplicated(durations$trip_id, fromLast = TRUE)
+
+  if (is_windowed) {
+    segment_departure <- durations$departure_time_secs[!is_last_stop]
   }
 
-  if (!gtfsio::check_field_exists(gtfs, "stop_times", "arrival_time_secs")) {
-    durations[, arrival_time_secs := string_to_seconds(arrival_time)]
-    created_arrival_secs <- TRUE
+  # each segment's duration runs from the departure at its first stop to the
+  # arrival at the next row, which belongs to the same trip because the last
+  # stop of each trip starts no segment
+
+  starts_segment <- !is_last_stop
+  durations <- data.table::data.table(
+    trip_id = durations$trip_id[starts_segment],
+    segment = data.table::rowid(durations$trip_id)[starts_segment],
+    duration = (
+      data.table::shift(durations$arrival_time_secs, -1L) -
+        durations$departure_time_secs
+    )[starts_segment]
+  )
+
+  # keep only the segments that depart from their first stop within the time
+  # of day
+
+  if (is_windowed) {
+    in_window <- !is.na(segment_departure) &
+      segment_departure >= window[1] &
+      segment_departure <= window[2]
+    durations <- durations[in_window]
   }
 
-  if (sort_sequence) {
-    if (is.null(trip_id)) durations <- data.table::copy(durations)
-    durations <- data.table::setorderv(durations, c("trip_id", "stop_sequence"))
-  }
-
-  durations[
-    ,
-    last_stop_departure := data.table::shift(
-      departure_time_secs,
-      1L,
-      type = "lag"
-    )
-  ]
-  durations <- durations[!durations[, .I[1], by = trip_id]$V1]
-  durations[, duration := arrival_time_secs - last_stop_departure]
-  durations[, segment := seq.int(1, .N, length.out = .N), by = trip_id]
-
-  # select desired columns and convert duration to desired unit
-
-  desired_cols <- c("trip_id", "segment", "duration")
-  durations <- durations[, setdiff(names(durations), desired_cols) := NULL]
-  data.table::setcolorder(durations, desired_cols)
+  # multiplying by the reciprocal keeps the results identical to those of
+  # earlier versions, bit for bit; dividing by the factor differs in the last
+  # bit for some durations. for "s" the column keeps its class (integer,
+  # unless the feed has double _secs columns)
 
   if (unit != "s") {
-    durations[
-      ,
-      duration := as.numeric(
-        units::set_units(
-          units::as_units(duration, "s"),
-          unit,
-          mode = "standard"
-        )
-      )
-    ]
-  }
-
-  # the function may have created some colums to gtfs$stop_times if a copy
-  # wasn't made when creating the durations table, so we need to clean them up
-
-  if (
-    gtfsio::check_field_exists(gtfs, "stop_times", "departure_time_secs") &&
-    exists("created_departure_secs")
-  ) {
-    gtfs$stop_times[, departure_time_secs := NULL]
-  }
-
-  if (
-    gtfsio::check_field_exists(gtfs, "stop_times", "arrival_time_secs") &&
-    exists("created_arrival_secs")
-  ) {
-    gtfs$stop_times[, arrival_time_secs := NULL]
-  }
-
-  if (gtfsio::check_field_exists(gtfs, "stop_times", "last_stop_departure")) {
-    gtfs$stop_times[, last_stop_departure := NULL]
+    durations[, duration := duration * (1 / dwell_unit_factors[[unit]])]
   }
 
   return(durations[])

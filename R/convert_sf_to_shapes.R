@@ -8,8 +8,10 @@
 #'   converted. If `NULL` (the default), all shapes are converted.
 #' @param calculate_distance A logical. Whether to calculate and populate the
 #'   `shape_dist_traveled` column. This column is used to describe the distance
-#'   along the shape from each one of its points to its first point. Defaults to
-#'   `TRUE`.
+#'   along the shape from each one of its points to its first point, in meters.
+#'   Distances are great-circle distances on a sphere with the same radius used
+#'   by `{s2}` (6,371,010 meters), regardless of whether `sf::sf_use_s2()` is
+#'   enabled. Defaults to `TRUE`.
 #'
 #' @return A `data.table` representing a GTFS `shapes` table.
 #'
@@ -22,7 +24,7 @@
 #' gtfs <- read_gtfs(data_path)
 #'
 #' # first converting existing shapes table into a sf object
-#' shapes_sf <- convert_shapes_to_sf(gtfs)
+#' shapes_sf <- get_shapes_geometry(gtfs)
 #' head(shapes_sf)
 #'
 #' # by default converts all shapes
@@ -49,36 +51,30 @@ convert_sf_to_shapes <- function(sf_shapes,
   if (!is.null(shape_id)) {
     relevant_shapes <- shape_id
 
-    invalid_shape_id <- shape_id[! shape_id %chin% sf_shapes$shape_id]
-
-    if (!identical(invalid_shape_id, character(0))) {
-      warning(
-        "'sf_shapes' doesn't contain the following shape_id(s): ",
-        paste0("'", invalid_shape_id, "'", collapse = ", ")
-      )
-    }
+    warn_missing_ids(shape_id, sf_shapes$shape_id, "sf_shapes", "shape_id")
 
     sf_shapes <- subset(sf_shapes, shape_id %chin% relevant_shapes)
   }
 
-  shapes_points <- sfheaders::sf_cast(sf_shapes, "POINT")
+  # sf_to_df() reads the vertices of the linestrings directly, without casting
+  # them to points first
 
-  if (calculate_distance) {
-    shapes_points <- calculate_shape_dist_traveled(shapes_points)
-  }
-
-  if (nrow(shapes_points) > 0) {
-    shapes <- sfheaders::sf_to_df(shapes_points, fill = TRUE)
+  if (nrow(sf_shapes) > 0) {
+    shapes <- sfheaders::sf_to_df(sf_shapes, fill = TRUE)
 
     data.table::setDT(shapes)
     data.table::setattr(shapes, "sfc_columns", NULL)
-    shapes[, c("sfg_id", "point_id") := NULL]
+    shapes[, c("sfg_id", "linestring_id") := NULL]
   } else {
-    sf::st_geometry(shapes_points) <- NULL
-    shapes <- shapes_points
+    sf::st_geometry(sf_shapes) <- NULL
+    shapes <- sf_shapes
 
     data.table::setDT(shapes)
     shapes[, c("x", "y") := numeric(0)]
+  }
+
+  if (calculate_distance) {
+    shapes <- calculate_shape_dist_traveled(shapes)
   }
 
   data.table::setnames(
@@ -94,35 +90,32 @@ convert_sf_to_shapes <- function(sf_shapes,
 
 
 
-calculate_shape_dist_traveled <- function(shapes_points) {
-  empty_point <- sf::st_as_sfc("POINT(EMPTY)", crs = 4326)
+calculate_shape_dist_traveled <- function(shapes) {
+  # distance from each point to the previous one, on the same sphere used by
+  # {s2}. the first point of each shape is 0 meters away from its "previous"
+  # point
 
-  lagged_geometry <- append(empty_point, shapes_points$geometry)
-  lagged_geometry <- lagged_geometry[-length(lagged_geometry)]
-
-  distance_to_prev_point <- sf::st_distance(
-    shapes_points$geometry,
-    lagged_geometry,
-    by_element = TRUE
+  distance_to_prev_point <- shape_point_distances(
+    shapes$shape_id,
+    shapes$y,
+    shapes$x
   )
 
-  data.table::setDT(shapes_points)
-  shapes_points[, dist_to_prev_point := distance_to_prev_point]
-  shapes_points[
-    shapes_points[, .I[1], by = shape_id]$V1,
-    dist_to_prev_point := 0
-  ]
-  shapes_points[
+  shapes[
     ,
-    shape_dist_traveled := cumsum(dist_to_prev_point),
+    shape_dist_traveled := cumsum(distance_to_prev_point[.I]),
     by = shape_id
   ]
-  shapes_points[, shape_dist_traveled := as.numeric(shape_dist_traveled)]
-  shapes_points[, dist_to_prev_point := NULL]
 
-  shapes_points <- sf::st_sf(shapes_points)
+  # shape_dist_traveled goes before the coordinates, as in the previous
+  # implementation
 
-  return(shapes_points)
+  data.table::setcolorder(
+    shapes,
+    c(setdiff(names(shapes), c("x", "y")), "x", "y")
+  )
+
+  return(shapes)
 }
 
 

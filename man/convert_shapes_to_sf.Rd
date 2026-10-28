@@ -2,9 +2,9 @@
 % Please edit documentation in R/convert_shapes_to_sf.R
 \name{convert_shapes_to_sf}
 \alias{convert_shapes_to_sf}
-\title{Convert \code{shapes} table to simple feature object}
+\title{Convert \code{shapes} table to simple feature object (deprecated)}
 \usage{
-convert_shapes_to_sf(gtfs, shape_id = NULL, crs = 4326, sort_sequence = FALSE)
+convert_shapes_to_sf(gtfs, shape_id = NULL, crs = 4326, sort_sequence)
 }
 \arguments{
 \item{gtfs}{A GTFS object, as created by \code{\link[=read_gtfs]{read_gtfs()}}.}
@@ -15,31 +15,18 @@ If \code{NULL} (the default), all shapes are converted.}
 \item{crs}{The CRS of the resulting object, either as an EPSG code or as an
 \code{crs} object. Defaults to 4326 (WGS 84).}
 
-\item{sort_sequence}{A logical. Whether to sort shapes by
-\code{shape_pt_sequence}. Defaults to \code{FALSE}, otherwise spec-compliant feeds,
-in which shape points are already ordered by \code{shape_pt_sequence}, would be
-penalized through longer processing times. Shapes generated from unordered
-sequences do not correctly depict the real life trip shapes.}
+\item{sort_sequence}{Deprecated; do not supply. Shapes are now always sorted
+by \code{shape_pt_sequence}. Passing \code{TRUE} raises a warning, and passing
+\code{FALSE} raises an error.}
 }
 \value{
 A \verb{LINESTRING sf} object.
 }
 \description{
-Converts the \code{shapes} table to a \verb{LINESTRING sf} object.
+This function is deprecated: calling it raises a warning. Please use
+\code{\link[=get_shapes_geometry]{get_shapes_geometry()}} instead, which takes the same arguments (except
+\code{sort_sequence}) and returns the same result.
 }
-\examples{
-\dontshow{
-  old_dt_threads <- data.table::setDTthreads(1)
-  on.exit(data.table::setDTthreads(old_dt_threads), add = TRUE)
-}
-# read gtfs
-data_path <- system.file("extdata/spo_gtfs.zip", package = "gtfstools")
-gtfs <- read_gtfs(data_path)
-
-shapes_sf <- convert_shapes_to_sf(gtfs)
-head(shapes_sf)
-
-shapes_sf <- convert_shapes_to_sf(gtfs, shape_id = "17846")
-shapes_sf
-
+\seealso{
+\code{\link[=get_shapes_geometry]{get_shapes_geometry()}}, which replaces this function.
 }

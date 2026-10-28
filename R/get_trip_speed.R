@@ -1,34 +1,54 @@
 #' Get trip speed
 #'
-#' Returns the speed of each specified `trip_id`, based on the geometry created
-#' from either the `shapes` or the `stop_times` file (or both).
+#' Returns the average speed of each specified `trip_id`, either from the first
+#' to the last stop of the trip or between each pair of consecutive stops.
 #'
 #' @template gtfs
 #' @param trip_id A character vector including the `trip_id`s to have their
 #'   speeds calculated. If `NULL` (the default), the function calculates the
 #'   speed of every `trip_id` in the GTFS.
-#' @param file The file from which geometries should be generated, either
-#'   `shapes` or `stop_times` (geometries are used to calculate the length of a
-#'   trip). Defaults to `shapes`.
+#' @template method
+#' @param by A string, either `"trip"` (the default) or `"segment"`. `"trip"`
+#'   returns the average speed from the first to the last stop of each trip,
+#'   while `"segment"` returns the average speed between each pair of
+#'   consecutive stops.
 #' @param unit A string representing the unit in which the speeds are desired.
-#'   Either `"km/h"` (the default) or `"m/s"`.
-#' @param sort_sequence Ultimately passed to [get_trip_length()], a logical
-#'   specifying whether to sort shapes and timetables by `shape_pt_sequence` and
-#'   `stop_sequence`, respectively. Speeds calculated from trip trajectories
-#'   generated with unordered sequences do not correctly depict the actual trip
-#'   speeds. Defaults to `FALSE`, otherwise spec-compliant feeds, in which
-#'   shape/timetables points are already ordered by
-#'   `shape_pt_sequence`/`stop_sequence`, would be penalized through longer
-#'   processing times.
+#'   One of `"km/h"` (the default), `"m/s"` or `"mph"` (miles per hour).
+#' @param sort_sequence Deprecated; do not supply. Timetables and shapes are
+#'   now always sorted by `stop_sequence` and `shape_pt_sequence`. Passing
+#'   `TRUE` raises a warning, and passing `FALSE` raises an error.
+#' @param file Deprecated. Use `method` instead (`file = "stop_times"`
+#'   corresponds to `method = "euclidean"`).
+#' @inheritParams get_trip_length
 #'
-#' @return A `data.table` containing the duration of each specified trip and the
-#'   file from which geometries were generated.
+#' @return With `by = "trip"`, a `data.table` with the `route_id`, the
+#'   `trip_id` and the average `speed` of each trip. With `by = "segment"`, a
+#'   `data.table` with the `route_id`, the `trip_id`, the `segment` number, the
+#'   `from_stop_id` and `to_stop_id` that delimit the segment and its average
+#'   `speed`.
 #'
 #' @section Details:
-#' Please check [get_trip_geometry()] documentation to understand how geometry
-#' generation differs depending on the chosen file.
+#' The speed is the length calculated by [get_trip_length()] divided by the
+#' duration calculated by [get_trip_duration()] (with `by = "trip"`) or by
+#' [get_trip_segment_duration()] (with `by = "segment"`). Speeds are `NA` when
+#' the length is `NA` (e.g. trips not linked to a shape) or when the duration
+#' is missing (e.g. blank times at intermediate stops) or not positive. With
+#' `by = "trip"`, trips without any arrival or departure time raise the warning
+#' of [get_trip_duration()].
 #'
-#' @seealso [get_trip_geometry()]
+#' The `route_id` of each trip comes from the `trips` table, which is required
+#' (also with `method = "euclidean"`). Trips not listed in `trips` have an `NA`
+#' `route_id`.
+#'
+#' Existing `_secs` columns in `stop_times` (e.g. created with
+#' [convert_time_to_seconds()]) are used as-is, not recalculated from the time
+#' strings.
+#'
+#' `from` and `to` select the trips (or segments) as in [get_trip_length()],
+#' from the `departure_time` strings, even if `_secs` columns exist.
+#'
+#' @seealso [get_route_speed()], [set_trip_speed()], [set_route_speed()],
+#'   [get_trip_length()], [get_trip_duration()], [get_trip_segment_duration()]
 #'
 #' @examples
 #' \dontshow{
@@ -46,37 +66,55 @@
 #' trip_speed <- get_trip_speed(gtfs, trip_ids)
 #' trip_speed
 #'
-#' trip_speed <- get_trip_speed(
-#'   gtfs,
-#'   trip_ids,
-#'   file = c("shapes", "stop_times")
-#' )
+#' trip_speed <- get_trip_speed(gtfs, trip_ids, method = "euclidean")
 #' trip_speed
 #'
 #' trip_speed <- get_trip_speed(gtfs, trip_ids, unit = "m/s")
 #' trip_speed
 #'
+#' segment_speed <- get_trip_speed(gtfs, "CPTM L07-0", by = "segment")
+#' head(segment_speed)
+#'
+#' # speed of the trips that depart within a time of day
+#' peak_speed <- get_trip_speed(gtfs, from = "07:00:00", to = "09:00:00")
+#' head(peak_speed)
+#'
 #' @export
-get_trip_speed <- function(gtfs,
-                           trip_id = NULL,
-                           file = "shapes",
-                           unit = "km/h",
-                           sort_sequence = FALSE) {
+get_trip_speed <- function(
+  gtfs,
+  trip_id = NULL,
+  method = "shapes",
+  by = "trip",
+  unit = "km/h",
+  sort_sequence,
+  file = NULL,
+  from = NULL,
+  to = NULL
+) {
+  if (!missing(sort_sequence)) {
+    check_deprecated_sort_sequence(
+      sort_sequence,
+      "get_trip_speed",
+      c("stop_sequence", "shape_pt_sequence")
+    )
+  }
+
   gtfs <- assert_and_assign_gtfs_object(gtfs)
   checkmate::assert_character(trip_id, null.ok = TRUE, any.missing = FALSE)
-  checkmate::assert_names(file, subset.of = c("shapes", "stop_times"))
   checkmate::assert(
-    checkmate::check_string(unit),
-    checkmate::check_names(unit, subset.of = c("km/h", "m/s")),
+    checkmate::check_string(by),
+    checkmate::check_names(by, subset.of = c("trip", "segment")),
     combine = "and"
   )
-  checkmate::assert_logical(sort_sequence, any.missing = FALSE, len = 1)
+  checkmate::assert(
+    checkmate::check_string(unit),
+    checkmate::check_names(unit, subset.of = names(speed_unit_factors)),
+    combine = "and"
+  )
+  window <- dwell_time_window(from, to)
 
-  # check if fields and files required to estimate trip duration exist (a bit of
-  # an overlap, since these are also checked in a later get_trip_duration call,
-  # but it prevents cases where the files required to generate geometries are
-  # present but those required to estimate trip duration are not, which would
-  # cause errors to be thrown very late)
+  # check the fields required to calculate durations before calculating
+  # lengths, so errors are not thrown very late
 
   gtfsio::assert_field_class(
     gtfs,
@@ -84,46 +122,75 @@ get_trip_speed <- function(gtfs,
     c("trip_id", "arrival_time", "departure_time"),
     rep("character", 3)
   )
-
-  length_unit <- ifelse(unit == "km/h", "km", "m")
-  trips_length <- get_trip_length(
+  gtfsio::assert_field_class(
     gtfs,
-    trip_id,
-    file,
-    length_unit,
-    sort_sequence
+    "trips",
+    c("trip_id", "route_id"),
+    rep("character", 2)
   )
 
-  # calculate trips' duration
-  # - a warning might be raised in get_trip_duration() if a trip in
-  # existing_trips doesn't exist in stop_times table. if 'trip_id' is NULL, we
-  # don't want to raise that warning, so we remove missing stop_times trips from
-  # existing_trips
+  # speeds in mph are calculated in km/h and converted at the end
 
-  existing_trips <- unique(trips_length$trip_id)
-  if (is.null(trip_id)) {
-    stop_times_trips <- unique(gtfs$stop_times$trip_id)
-    existing_trips <- existing_trips[existing_trips %chin% stop_times_trips]
+  length_unit <- ifelse(unit == "m/s", "m", "km")
+  duration_unit <- ifelse(unit == "m/s", "s", "h")
+
+  if (!is.null(file)) {
+    method <- map_deprecated_file(file, "get_trip_speed")
   }
 
-  duration_unit <- data.table::fifelse(unit == "km/h", "h", "s")
-  trips_duration <- get_trip_duration(gtfs, existing_trips, duration_unit)
+  # get_trip_length() keeps only the trips or segments within the time of
+  # day, so the durations joined to them below are filtered too
 
-  # join trips_length and trips_duration
-  # a trip may be missing from trips_duration and not from trips_length (when
-  # stop_times doesn't contain a trip listed in trips_length), but not the other
-  # way around (because only trips listed in trips_length have their durations
-  # calculated). so we do a right join here, instead of a left join
+  lengths <- get_trip_length(
+    gtfs,
+    trip_id,
+    method,
+    by,
+    length_unit,
+    from = from,
+    to = to
+  )
 
-  trips_speed <- trips_length[trips_duration, on = "trip_id"]
+  # retrieve route_id col
+  lengths[gtfs$trips, on = "trip_id", route_id := i.route_id]
+  data.table::setcolorder(lengths, "route_id")
 
-  # calculate speed as length/duration
+  if (nrow(lengths) == 0) {
+    data.table::setnames(lengths, "length", "speed")
+    return(lengths[])
+  }
 
-  trips_speed[, speed := length / duration]
+  # durations are calculated only for the trips whose lengths were calculated,
+  # so a warning about a trip_id that doesn't exist is raised only once (by
+  # get_trip_length()), and only for the trips within the time of day
 
-  # remove length and duration columns
+  duration_trips <- NULL
+  if (!is.null(trip_id) || any(is.finite(window))) {
+    duration_trips <- unique(lengths$trip_id)
+  }
 
-  trips_speed[, `:=`(length = NULL, duration = NULL)]
+  if (by == "trip") {
+    durations <- get_trip_duration(gtfs, duration_trips, duration_unit)
+    join_cols <- "trip_id"
+  } else {
+    durations <- get_trip_segment_duration(gtfs, duration_trips, duration_unit)
+    join_cols <- c("trip_id", "segment")
+  }
 
-  return(trips_speed[])
+  # left join, so trips whose lengths couldn't be calculated (e.g. trips not
+  # linked to a shape) are kept, with NA speeds
+
+  speeds <- durations[lengths, on = join_cols]
+
+  speeds[, speed := length / duration]
+  speeds[!is.finite(duration) | duration <= 0, speed := NA_real_]
+
+  if (unit == "mph") {
+    speeds[, speed := speed / km_per_mile]
+  }
+
+  speeds[, c("length", "duration") := NULL]
+  data.table::setcolorder(speeds, setdiff(names(lengths), "length"))
+
+  return(speeds[])
 }

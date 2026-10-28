@@ -4,7 +4,12 @@
 \alias{frequencies_to_stop_times}
 \title{Convert frequencies to stop times}
 \usage{
-frequencies_to_stop_times(gtfs, trip_id = NULL, force = FALSE)
+frequencies_to_stop_times(
+  gtfs,
+  trip_id = NULL,
+  force = FALSE,
+  strategy = "exact"
+)
 }
 \arguments{
 \item{gtfs}{A GTFS object, as created by \code{\link[=read_gtfs]{read_gtfs()}}.}
@@ -18,6 +23,27 @@ even if they are not described in \code{stop_times} (defaults to \code{FALSE}). 
 set to \code{TRUE}, these mismatched trip are removed from the \code{frequencies} table
 and their correspondent entries in \code{trips} are substituted by what would be
 their converted counterpart.}
+
+\item{strategy}{A string. The strategy used to set the departure times of
+the trips created from frequency-based entries of the \code{frequencies} table
+(i.e. those whose \code{exact_times} is not \code{1}). One of:
+\itemize{
+\item \code{"exact"} (the default): trips depart every \code{headway_secs} from
+\code{start_time};
+\item \code{"half_headway"}: departures are shifted by half the headway, rounded
+down to whole seconds;
+\item \code{"random"}: departures are shifted by a random whole number of seconds,
+from 0 up to (but not including) the headway, drawn independently for
+each entry. Uses R's random number generator, so results can be made
+reproducible with \code{\link[=set.seed]{set.seed()}}.
+}
+
+In entries shorter than their headway, the duration of the entry (from
+\code{start_time} to \code{end_time}) is used in place of the headway, so that no
+departure is shifted to or past \code{end_time} and each entry still yields at
+least one trip. As departures are shifted towards \code{end_time}, an entry may
+yield one trip fewer than with \code{"exact"}. Entries whose \code{exact_times} is
+\code{1} follow an exact schedule and are always converted as with \code{"exact"}.}
 }
 \value{
 A GTFS object with updated \code{frequencies}, \code{stop_times} and \code{trips}
@@ -34,19 +60,33 @@ after converting the GTFS. Let's say, for example, that the \code{frequencies}
 table describes a trip called \code{"example_trip"}, that starts at 08:00 and
 stops at 09:00, with a 30 minutes headway.
 
-In practice, that means that one trip will depart at 08:00, another at 08:30
-and yet another at 09:00. \code{frequencies_to_stop_times()} appends a \code{"_<n>"}
+In practice, with the default \code{strategy = "exact"}, that means that one trip
+will depart at 08:00 and another at 08:30. As required by the GTFS
+specification, no trip departs at the \code{end_time} (09:00), which is when the
+headway changes or the service ceases.
+An entry whose \code{start_time} and \code{end_time} are equal yields a single trip,
+departing at that time. \code{frequencies_to_stop_times()} appends a \code{"_<n>"}
 suffix to the newly created trips to differentiate each one of them (e.g. in
 this case, the new trips, described in the \code{trips} and \code{stop_times} tables,
-would be called \code{"example_trip_1"}, \code{"example_trip_2"} and
-\code{"example_trip_3"}).
+would be called \code{"example_trip_1"} and \code{"example_trip_2"}).
+
+The times of each new trip are those of its template, shifted so that it
+departs from the first stop at the departure time. When the template has a
+dwell time at the first stop, a departure close to midnight may yield an
+arrival before 00:00:00, which is set to 00:00:00 instead.
+
+Existing \verb{_secs} columns in \code{stop_times} and \code{frequencies} (e.g. created
+with \code{\link[=convert_time_to_seconds]{convert_time_to_seconds()}}) are used as-is, not recalculated from the
+time strings.
 }
 
 \examples{
+\dontshow{if (requireNamespace("dplyr", quietly = TRUE)) withAutoprint(\{ # examplesIf}
 \dontshow{
   old_dt_threads <- data.table::setDTthreads(1)
-  on.exit(data.table::setDTthreads(old_dt_threads), add = TRUE)
 }
+library(dplyr)
+
 data_path <- system.file("extdata/spo_gtfs.zip", package = "gtfstools")
 gtfs <- read_gtfs(data_path)
 trip <- "CPTM L07-0"
@@ -58,10 +98,14 @@ converted_gtfs <- frequencies_to_stop_times(gtfs)
 converted_gtfs <- frequencies_to_stop_times(gtfs, trip)
 
 # how the specified trip_id was described in the frequencies table
-head(gtfs$frequencies[trip_id == trip])
+gtfs$frequencies |>
+  filter(trip_id == trip) |>
+  head()
 
 # the first row of each equivalent stop_times entry in the converted gtfs
-equivalent_stop_times <- converted_gtfs$stop_times[grepl(trip, trip_id)]
-equivalent_stop_times[equivalent_stop_times[, .I[1], by = trip_id]$V1]
-
+converted_gtfs$stop_times |>
+  filter(grepl(trip, trip_id)) |>
+  distinct(trip_id, .keep_all = TRUE)
+\dontshow{data.table::setDTthreads(old_dt_threads)}
+\dontshow{\}) # examplesIf}
 }

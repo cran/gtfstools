@@ -24,8 +24,13 @@ is altered).
 }
 \description{
 Converts \code{stop_times}' and \code{frequencies}' fields in the "HH:MM:SS" format to
-seconds after midnight. Instead of overwritting the existing fields, creates
+seconds after midnight. Instead of overwriting the existing fields, creates
 new fields with the \verb{_secs} suffix.
+}
+\details{
+Other gtfstools functions use existing \verb{_secs} columns as-is. The functions
+that edit times keep them in sync, but other edits (e.g. made directly to
+the tables) don't, so re-run \code{convert_time_to_seconds()} after them.
 }
 \examples{
 \dontshow{

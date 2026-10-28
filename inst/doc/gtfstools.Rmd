@@ -14,6 +14,7 @@ knitr::opts_chunk$set(
 )
 
 Sys.setenv(OMP_THREAD_LIMIT = 2)
+data.table::setDTthreads(2)
 ```
 
 The General Transit Feed Specification (GTFS) data format defines a common scheme for describing transit systems, and is widely used by transit agencies around the world and consumed by many software applications. The **gtfstools** package makes handling GTFS data in **R** very easy and fast, offering many utility functions to read, manipulate, analyze and write transit feeds in such format.
@@ -39,17 +40,24 @@ install.packages("gtfstools")
 ...or the development version from GitHub.
 
 ```{r, eval = FALSE}
-install.packages("gtfstools", repos = "https://dhersz.r-universe.dev")
-
-# or
 # install.packages("remotes")
-remotes::install_github("ipeaGIT/gtfstools")
+remotes::install_github("ipea/gtfstools")
 ```
 
 Then attach it to the current R session:
 
 ```{r, message = FALSE}
 library(gtfstools)
+```
+
+Some functions of the package run part of their computations in parallel, such as `get_trip_length()`, `get_trip_speed()`, `get_trip_geometry()`, `set_trip_speed()`, `interpolate_stop_times()`, `get_shape_length()` and `get_stop_distances()`. Since **gtfstools** is built on top of `{data.table}`, these functions follow its configuration and, by default, use 50% of the available logical CPU cores. Users can change the number of threads used by the package with `data.table::setDTthreads()`:
+
+```{r, eval = FALSE}
+# checks the number of threads currently used
+data.table::getDTthreads()
+
+# uses 4 threads
+data.table::setDTthreads(4)
 ```
 
 A few sample files are included in the package:
@@ -90,17 +98,22 @@ Please note that date fields are read as columns of class `Date`, instead of bei
 
 **gtfstools** also includes a few functions to prevent you from getting stuck with repetitive tasks: 
 
-`get_trip_geometry()` returns the geometry of each trip in a GTFS object as an `sf` object (please check [`{sf}` webpage](https://r-spatial.github.io/sf/) for more details). GTFS data allows you to generate geometries using two different methods: either converting the shapes described in the `shapes.txt` file to an `sf`, or linking the subsequent stops of each trip as described in the `stop_times.txt` along a straight line. While the former tends to yield more reliable and higher resolution geometries, it may be useful to compare the results of both methods to check if the trips described in `stop_times` actually resemble their actual shape:
+`get_trip_geometry()` returns the geometry of each trip in a GTFS object as an `sf` object (please check [`{sf}` webpage](https://r-spatial.github.io/sf/) for more details), from its first to its last stop. GTFS data allows you to generate geometries using two different methods: either cutting the trip's shape, described in the `shapes.txt` file, between its first and last stops (`method = "shapes"`, the default), or linking the subsequent stops of each trip as described in the `stop_times.txt` along straight lines (`method = "euclidean"`). While the former tends to yield more reliable and higher resolution geometries, it may be useful to compare the results of both methods to check if the trips described in `stop_times` actually resemble their actual shape:
 
 ```{r}
-trip_geom <- get_trip_geometry(spo_gtfs, file = "shapes")
+trip_geom <- get_trip_geometry(spo_gtfs)
 plot(trip_geom$geometry)
 single_trip <- spo_gtfs$trips$trip_id[1]
 single_trip
 
-# 'file' argument defaults to c("shapes", "stop_times")
-both_geom <- get_trip_geometry(spo_gtfs, trip_id = single_trip)
-plot(both_geom["origin_file"])
+shape_geom <- get_trip_geometry(spo_gtfs, trip_id = single_trip)
+straight_geom <- get_trip_geometry(
+  spo_gtfs,
+  trip_id = single_trip,
+  method = "euclidean"
+)
+plot(shape_geom$geometry)
+plot(straight_geom$geometry, add = TRUE, col = "red")
 ```
 
 `get_trip_duration()` returns the duration of each trip in a GTFS object, as specified in the `stop_times` file, in the temporal unit of your desire (either seconds, minutes, hours or days):
@@ -126,7 +139,17 @@ head(single_seg_durtn)
 
 The quick example above shows how this function may help you diagnosing some problems in your GTFS data: apparently every single trip in `spo_gtfs` is composed by several equally long segments, which looks unreasonable.
 
-Finally, `get_trip_speed()` is a helper around `get_trip_geometry()` and `get_trip_duration()` that returns the average speed of each trip in a GTFS object:
+`get_trip_length()` returns the length of each trip, from its first to its last stop, either along the trip's shape (the default) or as straight lines between consecutive stops (`method = "euclidean"`). Like `get_trip_segment_duration()`, it can also return the length of each trip segment, with `by = "segment"`. `get_shape_length()` returns the length of entire shapes.
+
+```{r}
+trip_length <- get_trip_length(spo_gtfs)
+head(trip_length)
+
+segment_length <- get_trip_length(spo_gtfs, single_trip, by = "segment")
+head(segment_length)
+```
+
+Finally, `get_trip_speed()` combines `get_trip_length()` with `get_trip_duration()` (or `get_trip_segment_duration()`, with `by = "segment"`) to return the average speed of each trip or segment:
 
 ```{r}
 trip_speed <- get_trip_speed(spo_gtfs, unit = "m/s")
@@ -135,6 +158,9 @@ head(trip_speed)
 # 'unit' argument defaults to "km/h"
 single_trip_speed <- get_trip_speed(spo_gtfs, trip_id = single_trip)
 single_trip_speed
+
+segment_speed <- get_trip_speed(spo_gtfs, single_trip, by = "segment")
+head(segment_speed)
 ```
 
 ## Manipulate feeds
@@ -170,7 +196,7 @@ merged_files <- merge_gtfs(spo_gtfs, ggl_gtfs, files = c("shapes", "trips"))
 names(merged_files)
 ```
 
-`set_trip_speed()` sets the average speed of specified trips by adjusting the `arrival_time` and `departure_time` columns in the `stop_times` table. Average speed is calculated as the difference between the arrival time at the last stop minus the departure time at the first top, divided by the trip's length. Please note that arrival and departure times at intermediate stops are set as `""`. Some transport routing software, such as [OpenTripPlanner](https://www.opentripplanner.org/) and [R5](https://github.com/conveyal/r5), support specifying stop times like so, in which case they interpolate arrival/departure times at intermediate stops based on the trip's average speed and the euclidean distance between stops.
+`set_trip_speed()` sets the average speed of specified trips by adjusting the `arrival_time` and `departure_time` columns in the `stop_times` table. Average speed is calculated as the trip's length divided by the difference between the arrival time at the last stop and the departure time at the first stop. Please note that arrival and departure times at intermediate stops are set as `""`. Some transport routing software, such as [OpenTripPlanner](https://www.opentripplanner.org/) and [R5](https://github.com/conveyal/r5), support specifying stop times like so, in which case they interpolate arrival/departure times at intermediate stops based on the trip's average speed and the distances between stops. The [Editing GTFS feeds](editing.html) vignette presents other editing functions, such as `set_route_speed()`, which sets the speed of all trips of the given routes.
 
 ```{r}
 selected_trips <- c("2002-10-0", "CPTM L07-0")

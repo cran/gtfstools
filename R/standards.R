@@ -57,7 +57,21 @@ convert_from_standard <- function(gtfs) {
 #'
 #' @keywords internal
 integer_to_date <- function(field) {
-  as.Date(as.character(field), format = "%Y%m%d")
+  if (inherits(field, "Date")) return(field)
+  # convert each distinct value only once, then expand back to full length
+  u <- unique(field)
+  idx <- match(field, u)
+  dates <- as.Date(as.character(u), format = "%Y%m%d")
+  bad <- is.na(dates) & !is.na(u)
+  if (any(bad)) bad[bad] <- nzchar(trimws(u[bad])) # blank/NA stay silent
+  if (any(bad)) cli::cli_warn(
+    paste0(
+      "{sum(bad[idx])} invalid date{?s} (not a valid YYYYMMDD) ",
+      "converted to NA: {.val {u[bad]}}"
+    ),
+    class = "gtfstools_invalid_date"
+  )
+  dates[idx]
 }
 
 
@@ -142,6 +156,19 @@ convert_to_standard <- function(gtfs) {
     }
   }
 
+  # write strings as UTF-8, as required by GTFS. gtfsio::export_gtfs() calls
+  # fwrite() without encoding = "UTF-8", so latin1 strings (e.g. from
+  # read_gtfs(encoding = "Latin-1")) would be written byte-as-is. time
+  # columns are always ASCII, so they are skipped to save time on large feeds
+  for (file in names(new_gtfs)) {
+    if (!is.data.frame(new_gtfs[[file]])) next
+    for (col in names(new_gtfs[[file]])) {
+      if (is.character(new_gtfs[[file]][[col]]) && !endsWith(col, "_time")) {
+        new_gtfs[[file]][[col]] <- enc2utf8(new_gtfs[[file]][[col]])
+      }
+    }
+  }
+
   class(new_gtfs) <- setdiff(class(new_gtfs), "dt_gtfs")
 
   return(new_gtfs[])
@@ -152,5 +179,7 @@ convert_to_standard <- function(gtfs) {
 #'
 #' @keywords internal
 date_to_integer <- function(field) {
-  as.integer(strftime(field, format = "%Y%m%d"))
+  # convert each distinct value only once, then expand back to full length
+  u <- unique(field)
+  as.integer(strftime(u, format = "%Y%m%d"))[match(unclass(field), unclass(u))]
 }

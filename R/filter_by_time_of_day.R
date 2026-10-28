@@ -1,10 +1,8 @@
 #' Filter GTFS object by time of day
 #'
-#' Filters a GTFS object by time of day, keeping (or dropping) the relevant
-#' entries in each file. Please see the details section for more information on
-#' how this function filters the `frequencies` and `stop_times` tables, as well
-#' as how it handles `stop_times` tables that contain trips with some empty
-#' departure and arrival times.
+#' Filters a GTFS object by time of day, keeping (or dropping) the
+#' `stop_times` and `frequencies` entries within it, and keeping the entries
+#' of the other tables related to the trips that remain.
 #'
 #' @template gtfs
 #' @param from A string. The starting point of the time of day, in the
@@ -20,68 +18,43 @@
 #' this parameter changes the function behaviour.
 #' @param update_frequencies A logical. Whether the `frequencies` table should
 #' have its `start_time` and `end_time` fields updated to fit inside/outside the
-#' specified time of day (defaults to `FALSE`, which doesn't update the fields).
+#' specified time of day (defaults to `TRUE`, which updates the fields).
 #'
 #' @return The GTFS object passed to the `gtfs` parameter, after the filtering
 #' process.
 #'
 #' @section Details:
-#' When filtering the `frequencies` table, `filter_by_time_of_day()` respects
-#' the `exact_times` field. This field indicates whether the service follows a
-#' fixed schedule throughout the day or not. If it's 0 (or if it's not
-#' present), the service does not follow a fixed schedule. Instead, the
-#' operators try to maintain the listed headways. In such cases, if
-#' `update_frequencies` is `TRUE` we just update `start_time` and `end_time` to
-#' the appropriate value of `from` or `to` (which of this value is used depends
-#' on `keep`).
+#' The time of day includes both `from` and `to`.
 #'
-#' If `exact_times` is 1, however, operators try to strictly adhere to the start
-#' times and headway. As a result, when updating the `start_time` field we need
-#' to follow the listed headway. For example, take a trip that has its start
-#' time listed as 06:00:00, its end time listed as 08:00:00 and its headway
-#' listed as 300 secs (5 minutes). If you decide to filter the feed to keep the
-#' time of day between 06:32:00 and 08:00:00 while updating `frequencies`, the
-#' `start_time` field must be updated to 06:35:00 in order to preserve the
-#' correct departure times of this trips, instead of simply updating it to
-#' 06:32:00.
+#' Trips listed in `frequencies` are filtered through their `frequencies`
+#' entries; their `stop_times` entries are templates and are kept whatever
+#' their times. With `keep = TRUE`, the entries that overlap the time of day
+#' are kept; with `keep = FALSE`, those entirely within it are dropped. With
+#' `update_frequencies = TRUE` and `keep = TRUE`, an entry that starts before
+#' `from` starts at `from` (or, if `exact_times` is 1, at its first departure
+#' at or after `from`), and an entry that ends after `to` ends one second
+#' after `to`, so that a departure exactly at `to` is kept. With
+#' `update_frequencies = TRUE` and `keep = FALSE`, an entry that crosses
+#' `from` ends at `from`, an entry that crosses `to` starts one second after
+#' `to` (or, if `exact_times` is 1, at its first departure after `to`), and an
+#' entry that spans the whole time of day is split in two. Entries left
+#' without any departure are removed, and trips left without any entry are
+#' dropped from the feed.
 #'
-#' Another things to keep an eye on when filtering the `frequencies` table is
-#' that the corresponding `stop_times` entries of trips listed in the
-#' `frequencies` table should not be filtered, even if their departure and
-#' arrival times fall outside the specified time of day. This is because the
-#' `stop_times` entries of `frequencies`' trips are just templates that describe
-#' how long a segment between two stops takes, so the departure and arrival
-#' times listed there do not actually represent the actual departure and
-#' arrival times seen in practice. Taking the same example listed above, the
-#' corresponding `stop_times` entries of that trip could describe a departure
-#' from the first stop at 12:00:00 and an arrival at the second stop at
-#' 12:03:00. That doesn't mean the trip will actually leave and arrive at the
-#' stops at these times, but rather that it takes 3 minutes to get from the
-#' first to the second stop. So when the trip departs from the first stop at
-#' 06:35:00, it will get to the second at 06:38:00.
+#' The other trips are filtered through their `stop_times` entries, which are
+#' within the time of day when the visit, from `arrival_time` to
+#' `departure_time`, overlaps it (a blank time is ignored when the other is
+#' known). With `full_trips = FALSE`, each entry is kept or dropped on its own,
+#' and entries with both times blank (or, with `keep = FALSE`, either) are
+#' dropped. With `full_trips = TRUE`, a trip with any entry within the time of
+#' day is kept (`keep = TRUE`) or dropped (`keep = FALSE`) as a whole,
+#' including its blank entries. The other tables are then filtered to the
+#' trips left in `stop_times`, as in [filter_by_trip_id()], with a warning if
+#' `stop_times` lists trips missing from `trips`.
 #'
-#' When filtering the `stop_times` table, a few other details should be
-#' observed. First, one could wish to filter a GTFS object in order to keep all
-#' trips that cross a given time of day, whereas others may want to keep only
-#' the specific entries that fall inside the specified time of day. For
-#' example, take a trip that leaves the first stop at 06:30:00, gets to the
-#' second at 06:35:00 and then gets to the third at 06:45:00. When filtering to
-#' keep entire trips that cross the time of day between 06:30:00 and 06:40:00,
-#' all three stops will have to be kept. If, however, you want to keep only the
-#' entries that fall within the specified time of day, only the first two
-#' should be kept. To control such behaviour you need to set the `full_trips`
-#' parameter. When it's `TRUE`, the function behaves like the first case, and
-#' when it's `FALSE`, like the second.
-#'
-#' When using `full_trips` in conjunction with `keep`, please note how their
-#' behaviour stack. When both are `TRUE`, trips are always fully kept. When
-#' `keep` is `FALSE`, however, trips are fully dropped, even if some of their
-#' stops are visited outside the specified time of day.
-#'
-#' Finally, please note that many GTFS feeds may contain `stop_times` entries
-#' with empty departure and arrival times. In such cases, filtering by time of
-#' day with `full_trips` as `FALSE` will drop the entries with empty times.
-#' Please set `full_trips` to `TRUE` to preserve these entries.
+#' Existing `_secs` columns in `stop_times` and `frequencies` (e.g. created
+#' with [convert_time_to_seconds()]) are used as-is, not recalculated from the
+#' time strings.
 #'
 #' @family filtering functions
 #'
@@ -104,12 +77,13 @@
 #' head(smaller_gtfs$frequencies)
 #' head(smaller_gtfs$stop_times)
 #'
-#' # frequencies entries can be adjusted using update_frequencies = TRUE
+#' # frequencies entries are adjusted by default. use update_frequencies =
+#' # FALSE to keep their original times
 #' smaller_gtfs <- filter_by_time_of_day(
 #'   gtfs,
 #'   "05:30:00",
 #'   "06:00:00",
-#'   update_frequencies = TRUE
+#'   update_frequencies = FALSE
 #' )
 #' head(smaller_gtfs$frequencies)
 #'
@@ -148,8 +122,8 @@ filter_by_time_of_day <- function(gtfs,
                                   full_trips = FALSE,
                                   update_frequencies = TRUE) {
   gtfs <- assert_and_assign_gtfs_object(gtfs)
-  checkmate::assert_string(from, pattern = "^\\d{2}:\\d{2}:\\d{2}$")
-  checkmate::assert_string(to, pattern = "^\\d{2}:\\d{2}:\\d{2}$")
+  checkmate::assert_string(from, pattern = time_pattern)
+  checkmate::assert_string(to, pattern = time_pattern)
   checkmate::assert_logical(keep, len = 1, any.missing = FALSE)
   checkmate::assert_logical(full_trips, len = 1, any.missing = FALSE)
   checkmate::assert_logical(update_frequencies, len = 1, any.missing = FALSE)
@@ -166,6 +140,7 @@ filter_by_time_of_day <- function(gtfs,
   # specified period and conditionally update the entries that were kept
 
   frequency_trips <- character()
+  lost_frequency_trips <- character()
   if (gtfsio::check_file_exists(gtfs, "frequencies")) {
     gtfsio::assert_field_class(
       gtfs,
@@ -173,6 +148,8 @@ filter_by_time_of_day <- function(gtfs,
       c("trip_id", "start_time", "end_time"),
       rep("character", 3)
     )
+
+    original_frequency_trips <- unique(gtfs$frequencies$trip_id)
 
     gtfs$frequencies <- filter_frequencies(
       gtfs,
@@ -183,6 +160,7 @@ filter_by_time_of_day <- function(gtfs,
     )
 
     frequency_trips <- unique(gtfs$frequencies$trip_id)
+    lost_frequency_trips <- setdiff(original_frequency_trips, frequency_trips)
   }
 
   # filter the stop_times table and then filter the rest of the gtfs based on
@@ -197,6 +175,14 @@ filter_by_time_of_day <- function(gtfs,
     full_trips,
     frequency_trips
   )
+
+  # frequency-based trips whose frequencies entries were all filtered out must
+  # not be judged by their template times, so they are dropped altogether. the
+  # selection is created outside of `[` for consistency with the helpers above
+  # (this table is already the function's own)
+
+  is_lost_trip <- gtfs$stop_times$trip_id %chin% lost_frequency_trips
+  gtfs$stop_times <- gtfs$stop_times[which(!is_lost_trip)]
 
   relevant_trips <- unique(gtfs$stop_times$trip_id)
   invalid_trip_id <- relevant_trips[
@@ -223,17 +209,19 @@ filter_frequencies <- function(gtfs,
                                to_secs,
                                keep,
                                update_frequencies) {
-  # conditionally create time-in-seconds columns, depending if they exist before
-  # or not. if they didn't exist beforehand, they have to be removed afterwards
+  # the table is small, so it's copied: the columns added below never touch
+  # the given table. the time-in-seconds columns are created only if they
+  # didn't exist before, and are removed again at the end in that case
 
-  if (!gtfsio::check_field_exists(gtfs, "frequencies", "start_time_secs")) {
-    gtfs$frequencies[, start_time_secs := string_to_seconds(start_time)]
-    created_start_secs <- TRUE
+  frequencies <- data.table::copy(gtfs$frequencies)
+
+  has_start_secs <- "start_time_secs" %chin% names(frequencies)
+  has_end_secs <- "end_time_secs" %chin% names(frequencies)
+  if (!has_start_secs) {
+    frequencies[, start_time_secs := string_to_seconds(start_time)]
   }
-
-  if (!gtfsio::check_field_exists(gtfs, "frequencies", "end_time_secs")) {
-    gtfs$frequencies[, end_time_secs := string_to_seconds(end_time)]
-    created_end_secs <- TRUE
+  if (!has_end_secs) {
+    frequencies[, end_time_secs := string_to_seconds(end_time)]
   }
 
   # how we filter the frequencies table depend on the 'keep' argument.
@@ -246,21 +234,21 @@ filter_frequencies <- function(gtfs,
   # end_time), but want to drop the entries in which both start_time and
   # end_time are between 'from' and 'to'
 
-  gtfs$frequencies[
+  frequencies[
     ,
     `:=`(
       from_within = from_secs > start_time_secs & from_secs < end_time_secs,
-      to_within = to_secs > start_time_secs & to_secs < end_time_secs,
+      to_within = to_secs >= start_time_secs & to_secs < end_time_secs,
       within_from_to = start_time_secs >= from_secs & end_time_secs <= to_secs
     )
   ]
 
   if (keep) {
-    filtered_frequencies <- gtfs$frequencies[
+    filtered_frequencies <- frequencies[
       from_within == TRUE | to_within == TRUE | within_from_to == TRUE
     ]
   } else {
-    filtered_frequencies <- gtfs$frequencies[
+    filtered_frequencies <- frequencies[
       from_within == TRUE | to_within == TRUE | within_from_to == FALSE
     ]
   }
@@ -277,21 +265,12 @@ filter_frequencies <- function(gtfs,
     )
   }
 
-  # conditionally remove time-in-seconds columns
+  # remove the time-in-seconds columns that didn't exist before, and the
+  # auxiliary columns
 
-  if (exists("created_start_secs")) {
-    gtfs$frequencies[, start_time_secs := NULL]
-    filtered_frequencies[, start_time_secs := NULL]
-  }
+  if (!has_start_secs) filtered_frequencies[, start_time_secs := NULL]
+  if (!has_end_secs) filtered_frequencies[, end_time_secs := NULL]
 
-  if (exists("created_end_secs")) {
-    gtfs$frequencies[, end_time_secs := NULL]
-    filtered_frequencies[, end_time_secs := NULL]
-  }
-
-  # and remove the auxiliary columns
-
-  gtfs$frequencies[, c("from_within", "to_within", "within_from_to") := NULL]
   filtered_frequencies[
     ,
     c("from_within", "to_within", "within_from_to") := NULL
@@ -313,15 +292,23 @@ update_frequencies_times <- function(filtered_frequencies,
   # - keep is TRUE or FALSE. this changes whether start/end time relates to
   # to/from.
 
+  # the time columns in seconds are updated along with the time strings, so
+  # that entries left without any departure can be removed at the end
+
   if (is.null(filtered_frequencies$exact_times)) {
     if (keep) {
+      filtered_frequencies[from_within == TRUE, start_time_secs := from_secs]
       filtered_frequencies[
         from_within == TRUE,
-        start_time := seconds_to_string(from_secs)
+        start_time := seconds_to_string(start_time_secs)
       ]
+      # end_time is exclusive, so it's set to one second after 'to' to keep the
+      # departure at 'to', if there is one
+
+      filtered_frequencies[to_within == TRUE, end_time_secs := to_secs + 1L]
       filtered_frequencies[
         to_within == TRUE,
-        end_time := seconds_to_string(to_secs)
+        end_time := seconds_to_string(end_time_secs)
       ]
     } else {
       # when keep = FALSE, there may be cases in which the the time of day to
@@ -353,41 +340,54 @@ update_frequencies_times <- function(filtered_frequencies,
       filtered_frequencies[, is_duplicated := NULL]
 
       # the rest of the filtering is pretty standard but "inverted" when
-      # compared to keep = TRUE
+      # compared to keep = TRUE. the time of day includes 'to', so the
+      # remaining entries start one second after it
+
+      filtered_frequencies[from_within == TRUE, end_time_secs := from_secs]
       filtered_frequencies[
         from_within == TRUE,
-        end_time := seconds_to_string(from_secs)
+        end_time := seconds_to_string(end_time_secs)
       ]
+      filtered_frequencies[to_within == TRUE, start_time_secs := to_secs + 1L]
       filtered_frequencies[
         to_within == TRUE,
-        start_time := seconds_to_string(to_secs)
+        start_time := seconds_to_string(start_time_secs)
       ]
     }
   } else {
     if (keep) {
       # if exact_times is 0, the behaviour is like when exact_times doesn't
       # exist. if it's 1, the start_time should respect the headway. we can just
-      # set end_time to to_secs because what matters is the time the trips
-      # start, but not when the frequency period finishes
+      # set end_time to one second after to_secs (end_time is exclusive, so this
+      # keeps the departure at 'to', if there is one) because what matters is
+      # the time the trips start, but not when the frequency period finishes
 
-      filtered_frequencies[to_within == TRUE, end_time_secs := to_secs]
+      filtered_frequencies[to_within == TRUE, end_time_secs := to_secs + 1L]
       filtered_frequencies[
         to_within == TRUE,
         end_time := seconds_to_string(end_time_secs)
       ]
 
       filtered_frequencies[
-        from_within == TRUE & exact_times == 0,
+        from_within == TRUE & !exact_times %in% 1L,
         start_time_secs := from_secs
       ]
       filtered_frequencies[
-        from_within == TRUE & exact_times == 1,
+        from_within == TRUE & exact_times %in% 1L,
         start_time_secs := start_time_secs +
           ceiling((from_secs - start_time_secs) / headway_secs) * headway_secs
       ]
       filtered_frequencies[
         from_within == TRUE,
         start_time := seconds_to_string(start_time_secs)
+      ]
+
+      # the start_time adjusted to the headway may fall after 'to', in which
+      # case no departure happens within the time of day. this must be checked
+      # against 'to' because end_time is now one second after it
+
+      filtered_frequencies <- filtered_frequencies[
+        !(to_within == TRUE & start_time_secs > to_secs)
       ]
     } else {
       # we follow the same procedure to update the times when both from and to
@@ -423,28 +423,37 @@ update_frequencies_times <- function(filtered_frequencies,
         end_time := seconds_to_string(end_time_secs)
       ]
 
+      # the time of day includes 'to', so the remaining entries start one
+      # second after it or, with exact times, at the first departure after it
+
       filtered_frequencies[
-        to_within == TRUE & exact_times == 0,
-        start_time_secs := to_secs
+        to_within == TRUE & !exact_times %in% 1L,
+        start_time_secs := to_secs + 1L
       ]
       filtered_frequencies[
-        to_within == TRUE & exact_times == 1,
+        to_within == TRUE & exact_times %in% 1L,
         start_time_secs := start_time_secs +
-          ceiling((to_secs - start_time_secs) / headway_secs) * headway_secs
+          (floor((to_secs - start_time_secs) / headway_secs) + 1) *
+            headway_secs
       ]
       filtered_frequencies[
         to_within == TRUE,
         start_time := seconds_to_string(start_time_secs)
       ]
     }
-
-    # updating the start_time respecting the headway may yield start_times
-    # higher than the end_times. we remove the entries in which this situation
-    # happens
-    filtered_frequencies <- filtered_frequencies[
-      start_time_secs <= end_time_secs
-    ]
   }
+
+  # updating the start_time may yield start_times higher than the end_times,
+  # or equal to them, in which case no departure is left. we remove these
+  # entries. entries not updated whose start_time equals their end_time are
+  # kept, since they describe a single departure
+
+  filtered_frequencies <- filtered_frequencies[
+    !(
+      start_time_secs > end_time_secs |
+        ((from_within | to_within) & start_time_secs == end_time_secs)
+    )
+  ]
 
   return(filtered_frequencies)
 }
@@ -457,87 +466,48 @@ filter_stop_times <- function(gtfs,
                               keep,
                               full_trips,
                               frequency_trips) {
-  # conditionally create time-in-seconds columns, depending if they exist before
-  # or not. if they didn't exist beforehand, they have to be removed afterwards
+  # the times in seconds (from the existing '_secs' columns, if any) and the
+  # selections are local vectors, so the given table is never modified and
+  # {data.table} doesn't add an index to it. which() is used on every
+  # selection, so that a one-row table never yields a subset that shares its
+  # columns
 
-  if (!gtfsio::check_field_exists(gtfs, "stop_times", "departure_time_secs")) {
-    gtfs$stop_times[, departure_time_secs := string_to_seconds(departure_time)]
-    created_departure_secs <- TRUE
-  }
-
-  if (!gtfsio::check_field_exists(gtfs, "stop_times", "arrival_time_secs")) {
-    gtfs$stop_times[, arrival_time_secs := string_to_seconds(arrival_time)]
-    created_arrival_secs <- TRUE
-  }
+  stop_times <- gtfs$stop_times
+  dep_secs <- time_secs(stop_times, "departure_time")
+  arr_secs <- time_secs(stop_times, "arrival_time")
 
   # when filtering the stop_times table, we have to pay attention to the
   # full_trips and keep parameters. if both are TRUE, then we keep the trips
   # that have any of their stops visited inside the specified time of day. if
   # full_trips is TRUE and keep is FALSE, we drop the trips that have any of
   # their stops visited inside the time interval, and if full_trips is FALSE, we
-  # keep/drop only the stops that fall outside the time interval
+  # keep/drop only the stops that fall outside the time interval. the
+  # frequency-based trips are always kept
+
+  is_frequency_trip <- stop_times$trip_id %chin% frequency_trips
+  is_within <- (dep_secs >= from_secs | arr_secs >= from_secs) &
+    (dep_secs <= to_secs | arr_secs <= to_secs)
 
   if (keep) {
-    filtered_stop_times <- gtfs$stop_times[
-      (!(trip_id %chin% frequency_trips) &
-        (departure_time_secs >= from_secs | arrival_time_secs >= from_secs) &
-        (departure_time_secs <= to_secs | arrival_time_secs <= to_secs)) |
-      trip_id %chin% frequency_trips
-    ]
+    filtered_stop_times <- stop_times[which(is_frequency_trip | is_within)]
 
     if (full_trips) {
-      trips_kept <- unique(filtered_stop_times$trip_id)
-      filtered_stop_times <- gtfs$stop_times[trip_id %chin% trips_kept]
+      is_kept_trip <- stop_times$trip_id %chin% filtered_stop_times$trip_id
+      filtered_stop_times <- stop_times[which(is_kept_trip)]
     }
   } else {
-    filtered_stop_times <- gtfs$stop_times[
-      (!(trip_id %chin% frequency_trips) &
-        ((departure_time_secs < from_secs & arrival_time_secs < from_secs) |
-        (departure_time_secs > to_secs & arrival_time_secs > to_secs))) |
-      trip_id %chin% frequency_trips
-    ]
+    is_outside <- (dep_secs < from_secs & arr_secs < from_secs) |
+      (dep_secs > to_secs & arr_secs > to_secs)
+    filtered_stop_times <- stop_times[which(is_frequency_trip | is_outside)]
 
     if (full_trips) {
-      # to drop trips that had any of their stops filtered, we compare the
-      # filtered stop_times to the original stop_times and remove trips that
-      # had stops removed
+      # we drop exactly the trips that keep = TRUE would keep. which() treats
+      # NA as FALSE, so untimed entries don't cause their trips to be dropped
 
-      trips_kept <- unique(filtered_stop_times$trip_id)
-      original_stop_times <- gtfs$stop_times[trip_id %chin% trips_kept]
-      original_stop_count <- original_stop_times[
-        ,
-        .(n_stops = .N),
-        by = trip_id
-      ]
-      filtered_stop_count <- filtered_stop_times[
-        ,
-        .(n_stops = .N),
-        by = trip_id
-      ]
-
-      original_stop_count[
-        filtered_stop_count,
-        on = "trip_id",
-        filtered_n_stops := i.n_stops
-      ]
-      trips_to_drops <- original_stop_count[n_stops != filtered_n_stops]$trip_id
-
-      filtered_stop_times <- filtered_stop_times[
-        ! trip_id %chin% trips_to_drops
-      ]
+      trips_to_drop <- stop_times$trip_id[which(!is_frequency_trip & is_within)]
+      is_dropped_trip <- stop_times$trip_id %chin% trips_to_drop
+      filtered_stop_times <- stop_times[which(!is_dropped_trip)]
     }
-  }
-
-  # conditionally remove time-in-seconds columns
-
-  if (exists("created_departure_secs")) {
-    gtfs$stop_times[, departure_time_secs := NULL]
-    filtered_stop_times[, departure_time_secs := NULL]
-  }
-
-  if (exists("created_arrival_secs")) {
-    gtfs$stop_times[, arrival_time_secs := NULL]
-    filtered_stop_times[, arrival_time_secs := NULL]
   }
 
   return(filtered_stop_times)

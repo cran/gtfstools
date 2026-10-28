@@ -20,6 +20,48 @@ test_that("calculates seconds adequately", {
   expect_identical(string_to_seconds("00:00:00"), 0L)
   expect_identical(string_to_seconds("25:00:00"), 90000L)
   expect_identical(string_to_seconds("01:01:01"), 3661L)
+  expect_identical(
+    string_to_seconds(
+      c(" 07:05:09 ", "\t07:05:09\r\n", "7:05:09", "000000001:00:00",
+        "596523:14:07")
+    ),
+    c(25509L, 25509L, 25509L, 3600L, .Machine$integer.max)
+  )
+})
+
+test_that("handles repeated values and counts malformed strings per row", {
+  string <- c("abc", "08:00:00", "", "abc", NA, "08:00:00", " ", "NA")
+  expect_warning(
+    result <- string_to_seconds(string),
+    regexp = "^2 malformed time strings",
+    class = "gtfstools_malformed_time"
+  )
+  expect_identical(result, c(NA, 28800L, NA, NA, NA, 28800L, NA, NA))
+
+  malformed <- c(
+    "596523:14:08", "1234567890:00:00", "08:60:00", "08:00:60", "08:0:00",
+    "08:00", "08:00:00:00", ":00:00", "08 :00:00", "08:00:00 x", "08:00:00\f"
+  )
+  expect_warning(
+    result <- string_to_seconds(malformed),
+    regexp = "^11 malformed time strings",
+    class = "gtfstools_malformed_time"
+  )
+  expect_identical(result, rep(NA_integer_, 11))
+
+  # non-ASCII strings marked as "bytes" can't be translated to UTF-8, but are
+  # just malformed times
+
+  bytes_string <- rawToChar(c(charToRaw("08:00:00"), as.raw(0xff)))
+  Encoding(bytes_string) <- "bytes"
+  expect_warning(
+    result <- string_to_seconds(c("08:00:00", bytes_string)),
+    regexp = "^1 malformed time string",
+    class = "gtfstools_malformed_time"
+  )
+  expect_identical(result, c(28800L, NA))
+
+  expect_identical(string_to_seconds(character(0)), integer(0))
 })
 
 
@@ -40,6 +82,14 @@ test_that("generates strings correctly", {
   expect_identical(seconds_to_string(0L), "00:00:00")
   expect_identical(seconds_to_string(90000L), "25:00:00")
   expect_identical(seconds_to_string(3661L), "01:01:01")
+})
+
+test_that("handles repeated values", {
+  expect_identical(
+    seconds_to_string(c(3661L, NA, 3661L, 0L, NA)),
+    c("01:01:01", "", "01:01:01", "00:00:00", "")
+  )
+  expect_identical(seconds_to_string(integer(0)), character(0))
 })
 
 
@@ -163,4 +213,142 @@ test_that("always returns a dt_gtfs object", {
   gtfsio_gtfs <- gtfsio::import_gtfs(data_path)
   result <- assert_and_assign_gtfs_object(gtfsio_gtfs)
   expect_s3_class(result, "dt_gtfs")
+})
+
+
+
+# warn_missing_ids --------------------------------------------------------
+
+
+test_that("warn_missing_ids() warns about missing ids for its caller", {
+  f <- function(x) warn_missing_ids(x, c("a", "b"), "tbl", "x_id")
+
+  expect_silent(f("a"))
+  expect_silent(f(character(0)))
+  expect_identical(f("a"), character(0))
+
+  w <- tryCatch(f(c("a", "c", "c")), warning = function(w) w)
+  expect_identical(
+    conditionMessage(w),
+    "'tbl' doesn't contain the following x_id(s): 'c', 'c'"
+  )
+  expect_identical(conditionCall(w), quote(f(c("a", "c", "c"))))
+
+  expect_invisible(suppressWarnings(result <- f(c("a", "c", "c"))))
+  expect_identical(result, c("c", "c"))
+})
+
+
+
+# warn_invalid_ids --------------------------------------------------------
+
+
+test_that("warn_invalid_ids() warns about the distinct missing ids with cli", {
+  f <- function(x) warn_invalid_ids(x, c("a", "b"), "trips", "route_id")
+
+  expect_silent(f("a"))
+  expect_silent(f(character(0)))
+  expect_silent(f(NULL))
+  expect_identical(f("a"), character(0))
+
+  # the expected messages pin the rendering (singular and plural) that the
+  # users of the callers see
+
+  w <- tryCatch(f("c"), warning = function(w) w)
+  expect_s3_class(w, "gtfstools_invalid_route_id")
+  expect_identical(
+    conditionMessage(w),
+    "'trips' doesn't contain the following route_id: \"c\"."
+  )
+
+  w <- tryCatch(f(c("a", "c", "d", "c")), warning = function(w) w)
+  expect_identical(
+    conditionMessage(w),
+    "'trips' doesn't contain the following route_ids: \"c\" and \"d\"."
+  )
+
+  g <- function(x) warn_invalid_ids(x, "t1", "stop_times", "trip_id")
+  expect_warning(g("t2"), class = "gtfstools_invalid_trip_id")
+
+  expect_invisible(suppressWarnings(result <- f(c("a", "c", "c"))))
+  expect_identical(result, "c")
+})
+
+
+
+# refresh_secs_columns ----------------------------------------------------
+
+
+test_that("refresh_secs_columns() syncs existing *_secs columns by reference", {
+  dt <- data.table::data.table(
+    departure_time = c("00:00:10", "00:01:00", "00:02:00"),
+    arrival_time = c("00:00:05", "00:00:50", "00:01:50"),
+    departure_time_secs = 0L
+  )
+
+  # only the given rows are refreshed, and only the columns that exist
+
+  refresh_secs_columns(dt, c("departure_time", "arrival_time"), 2:3)
+  expect_identical(dt$departure_time_secs, c(0L, 60L, 120L))
+  expect_false("arrival_time_secs" %in% names(dt))
+
+  # NULL rows means all rows, and an empty selection is a silent no-op
+
+  refresh_secs_columns(dt, "departure_time")
+  expect_identical(dt$departure_time_secs, c(10L, 60L, 120L))
+
+  expect_silent(refresh_secs_columns(dt, "departure_time", integer(0)))
+  expect_identical(dt$departure_time_secs, c(10L, 60L, 120L))
+
+  expect_invisible(result <- refresh_secs_columns(dt, "departure_time"))
+  expect_identical(result, dt)
+})
+
+
+
+# time_secs ---------------------------------------------------------------
+
+
+test_that("time_secs() uses an existing _secs column as-is or converts", {
+  dt <- data.table::data.table(
+    departure_time = c("00:00:10", "00:01:00"),
+    arrival_time = c("00:00:05", NA),
+    departure_time_secs = c(10.5, 60)
+  )
+  expect_identical(time_secs(dt, "departure_time"), dt$departure_time_secs)
+  expect_identical(time_secs(dt, "arrival_time"), c(5L, NA))
+  expect_identical(time_secs(dt[0], "arrival_time"), integer(0))
+
+  dt[, departure_time_secs := c(10L, 60L)]
+  expect_identical(time_secs(dt, "departure_time"), c(10L, 60L))
+})
+
+
+
+# first_departure_per_trip ------------------------------------------------
+
+
+test_that("first_departure_per_trip() ignores missing departures", {
+  trip_id <- c("b", "a", "a", "c", "b")
+  secs <- c(NA, 30L, 10L, NA, 5L)
+  expected <- data.table::data.table(
+    trip_id = c("a", "b"),
+    departure_secs = c(10L, 5L)
+  )
+
+  # trips without any departure are left out, and the others are listed in
+  # the order of first appearance of their timed rows
+
+  expect_identical(first_departure_per_trip(trip_id, secs), expected)
+  expect_identical(
+    first_departure_per_trip(character(0), integer(0)),
+    expected[0]
+  )
+  expect_identical(first_departure_per_trip("c", NA_integer_), expected[0])
+
+  # the same without data.table's GForce optimisation of min()
+
+  old_options <- options(datatable.optimize = 0L)
+  on.exit(options(old_options), add = TRUE)
+  expect_identical(first_departure_per_trip(trip_id, secs), expected)
 })

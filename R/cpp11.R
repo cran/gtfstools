@@ -4,6 +4,30 @@ cpp_time_to_seconds <- function(times_in) {
   .Call(`_gtfstools_cpp_time_to_seconds`, times_in)
 }
 
+rcpp_distance_haversine <- function(lat_from, lon_from, lat_to, lon_to) {
+  .Call(`_gtfstools_rcpp_distance_haversine`, lat_from, lon_from, lat_to, lon_to)
+}
+
+cpp_stop_distances <- function(lat, lon, from, to) {
+  .Call(`_gtfstools_cpp_stop_distances`, lat, lon, from, to)
+}
+
+cpp_locate_stops_on_shapes <- function(shape_lat, shape_lon, shape_size, pattern_shape, stop_lat, stop_lon, pattern_size, prune) {
+  .Call(`_gtfstools_cpp_locate_stops_on_shapes`, shape_lat, shape_lon, shape_size, pattern_shape, stop_lat, stop_lon, pattern_size, prune)
+}
+
+cpp_shape_cut_segments <- function(lat, lon, shape_size, cut_shape, from, to) {
+  .Call(`_gtfstools_cpp_shape_cut_segments`, lat, lon, shape_size, cut_shape, from, to)
+}
+
+cpp_merge_stop_clusters <- function(n, from, to) {
+  .Call(`_gtfstools_cpp_merge_stop_clusters`, n, from, to)
+}
+
 cpp_seconds_to_string <- function(seconds_from_midnight) {
   .Call(`_gtfstools_cpp_seconds_to_string`, seconds_from_midnight)
+}
+
+cpp_sequence_pattern_id <- function(group_size, columns) {
+  .Call(`_gtfstools_cpp_sequence_pattern_id`, group_size, columns)
 }

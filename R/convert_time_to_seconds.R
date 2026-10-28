@@ -1,7 +1,7 @@
 #' Convert time fields to seconds after midnight
 #'
 #' Converts `stop_times`' and `frequencies`' fields in the "HH:MM:SS" format to
-#' seconds after midnight. Instead of overwritting the existing fields, creates
+#' seconds after midnight. Instead of overwriting the existing fields, creates
 #' new fields with the `_secs` suffix.
 #'
 #' @template gtfs
@@ -15,6 +15,11 @@
 #' time in seconds columns (identified by a `_secs` suffix). Else, returns a
 #' GTFS object invisibly (please note that in such case the original GTFS object
 #' is altered).
+#'
+#' @details
+#' Other gtfstools functions use existing `_secs` columns as-is. The functions
+#' that edit times keep them in sync, but other edits (e.g. made directly to
+#' the tables) don't, so re-run `convert_time_to_seconds()` after them.
 #'
 #' @examples
 #' \dontshow{
@@ -99,7 +104,7 @@ convert_time_to_seconds <- function(gtfs, file = NULL, by_reference = FALSE) {
     if (gtfsio::check_field_exists(gtfs, "frequencies", "start_time")) {
       gtfs$frequencies[, start_time_secs := string_to_seconds(start_time)]
     }
-    if (gtfsio::check_field_exists(gtfs, "frequencies", "start_time")) {
+    if (gtfsio::check_field_exists(gtfs, "frequencies", "end_time")) {
       gtfs$frequencies[, end_time_secs := string_to_seconds(end_time)]
     }
   }
@@ -113,7 +118,7 @@ convert_time_to_seconds <- function(gtfs, file = NULL, by_reference = FALSE) {
         departure_time_secs := string_to_seconds(departure_time)
       ]
     }
-    if (gtfsio::check_field_exists(gtfs, "stop_times", "departure_time")) {
+    if (gtfsio::check_field_exists(gtfs, "stop_times", "arrival_time")) {
       gtfs$stop_times[, arrival_time_secs := string_to_seconds(arrival_time)]
     }
   }

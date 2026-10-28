@@ -5,15 +5,17 @@
 #' are selected through a specified spatial operation.
 #'
 #' @template gtfs
-#' @param geom An `sf` object. Describes the spatial extent used to filter the
-#'   data.
+#' @param geom An `sf`, `sfc` or `bbox` object, in WGS 84 (EPSG 4326).
+#'   Describes the spatial extent used to filter the data. A `bbox` is treated
+#'   as a rectangle in longitude and latitude (unlike `sf::st_as_sfc(bbox)`,
+#'   whose edges are geodesics when `{s2}` is used).
 #' @param spatial_operation A spatial operation function from the set of
-#'   options listed in [geos_binary_pred][sf::geos_binary_pred] (check the
-#'   [DE-I9M](https://en.wikipedia.org/wiki/DE-9IM) Wikipedia entry for the
-#'   definition of each function). Defaults to [`sf::st_intersects`], which
+#'   options listed in [geos_binary_pred][sf::geos_binary_pred]. Defaults to [`sf::st_intersects`], which
 #'   tests if the shapes and trips have ANY intersection with the object
 #'   specified in `geom`. Please note that `geom` is passed as the `x` argument
-#'   of these functions.
+#'   of these functions. [sf::st_equals_exact()] and
+#'   [sf::st_is_within_distance()] are not supported, since they require
+#'   additional arguments.
 #' @param keep A logical. Whether the entries related to the shapes and trips
 #'   selected by the given spatial operation should be kept or dropped (defaults
 #'   to `TRUE`, which keeps the entries).
@@ -32,7 +34,7 @@
 #' gtfs <- read_gtfs(data_path)
 #'
 #' shape_id <- "68962"
-#' shape_sf <- convert_shapes_to_sf(gtfs, shape_id)
+#' shape_sf <- get_shapes_geometry(gtfs, shape_id)
 #' bbox <- sf::st_bbox(shape_sf)
 #' object.size(gtfs)
 #'
@@ -53,10 +55,12 @@
 #' object.size(smaller_gtfs)
 #'
 #' @export
-filter_by_spatial_extent <- function(gtfs,
-                                     geom,
-                                     spatial_operation = sf::st_intersects,
-                                     keep = TRUE) {
+filter_by_spatial_extent <- function(
+  gtfs,
+  geom,
+  spatial_operation = sf::st_intersects,
+  keep = TRUE
+) {
   gtfs <- assert_and_assign_gtfs_object(gtfs)
   checkmate::assert_logical(keep, len = 1)
   checkmate::assert(
@@ -66,12 +70,19 @@ filter_by_spatial_extent <- function(gtfs,
   )
   assert_spatial_operation(spatial_operation)
 
-  # convert 'geom' to polygon if a bounding box was given
-
-  if (inherits(geom, "bbox")) geom <- sf::st_buffer(sf::st_as_sfc(geom), 0)
-
   if (sf::st_crs(geom) != sf::st_crs(4326)) {
     stop("'geom' CRS must be WGS 84 (EPSG 4326).")
+  }
+
+  # a bbox is a rectangle in longitude/latitude, so it's tested with planar
+  # geometry: {s2} would turn its edges into geodesics
+
+  if (inherits(geom, "bbox")) {
+    geom <- sf::st_set_crs(sf::st_as_sfc(geom), NA)
+    operation <- spatial_operation
+    spatial_operation <- function(x, y, ...) {
+      operation(x, sf::st_set_crs(y, NA), ...)
+    }
   }
 
   if (
@@ -81,46 +92,48 @@ filter_by_spatial_extent <- function(gtfs,
     geom <- sf::st_union(geom)
   }
 
-  gtfs_list <- vector("list", 2L)
+  has_shapes <- gtfsio::check_file_exists(gtfs, "shapes")
+  has_stop_times <- gtfsio::check_file_exists(gtfs, "stop_times")
 
-  if (gtfsio::check_file_exists(gtfs, "shapes")) {
-    shapes_sf <- convert_shapes_to_sf(gtfs)
-    did_succeed_operation <- spatial_operation(geom, shapes_sf, sparse = FALSE)
-
-    shapes_sf <- shapes_sf[did_succeed_operation, ]
-    relevant_shapes <- shapes_sf$shape_id
-
-    shapes_gtfs <- filter_by_shape_id(gtfs, relevant_shapes, keep)
-    gtfs_list[[1]] <- shapes_gtfs
-  }
-
-  if (gtfsio::check_file_exists(gtfs, "stop_times")) {
-    trips_sf <- get_trip_geometry(gtfs, file = "stop_times")
-    did_succeed_operation <- spatial_operation(geom, trips_sf, sparse = FALSE)
-
-    trips_sf <- trips_sf[did_succeed_operation, ]
-    relevant_trips <- trips_sf$trip_id
-
-    trips_gtfs <- filter_by_trip_id(gtfs, relevant_trips, keep)
-    gtfs_list[[2]] <- trips_gtfs
-  }
-
-  # remove NULL elements from 'gtfs_list' and raise error if it's empty (happens
-  # when neither 'shapes' nor 'stop_times' tables are present in gtfs)
-
-  gtfs_list <- Filter(Negate(is.null), gtfs_list)
-
-  if (length(gtfs_list) == 0) {
+  if (!has_shapes && !has_stop_times) {
     stop(
       "Could not conduct spatial operations with the provided GTFS object. ",
       "It must contain either a 'shapes' or a 'stop_times' table."
     )
   }
 
-  # merge the gtfs objects
+  # a trip is selected if either its shape or the path through its stops
+  # satisfies the spatial operation. we gather the union of these trips and
+  # filter the gtfs only once, so 'keep = FALSE' drops trips selected by either
+  # of them
 
-  result_gtfs <- merge_gtfs(gtfs_list)
-  result_gtfs <- remove_duplicates(result_gtfs)
+  relevant_trips <- character(0)
+
+  if (has_shapes) {
+    shapes_sf <- get_shapes_geometry(gtfs)
+    did_succeed_operation <- spatial_operation(geom, shapes_sf, sparse = FALSE)
+
+    relevant_shapes <- shapes_sf$shape_id[did_succeed_operation]
+    is_relevant <- gtfs$trips$shape_id %chin% relevant_shapes
+    relevant_trips <- c(relevant_trips, gtfs$trips$trip_id[is_relevant])
+  }
+
+  if (has_stop_times) {
+    # trips already selected by their shapes don't need to be tested again. the
+    # logical index is created outside of `[` so that {data.table} doesn't add
+    # an index to the original stop_times table
+
+    to_test <- !(gtfs$stop_times$trip_id %chin% relevant_trips)
+    untested_gtfs <- gtfs
+    untested_gtfs$stop_times <- gtfs$stop_times[to_test]
+
+    trips_sf <- get_trip_geometry(untested_gtfs, method = "euclidean")
+    did_succeed_operation <- spatial_operation(geom, trips_sf, sparse = FALSE)
+
+    relevant_trips <- c(relevant_trips, trips_sf$trip_id[did_succeed_operation])
+  }
+
+  result_gtfs <- filter_by_trip_id(gtfs, unique(relevant_trips), keep)
 
   return(result_gtfs)
 }
@@ -137,9 +150,7 @@ assert_spatial_operation <- function(spatial_operation) {
     overlaps = sf::st_overlaps,
     equals = sf::st_equals,
     covers = sf::st_covers,
-    covered_by = sf::st_covered_by,
-    equals_exact = sf::st_equals_exact,
-    is_within_distance = sf::st_is_within_distance
+    covered_by = sf::st_covered_by
   )
 
   checkmate::assert_class(spatial_operation, "function")
@@ -152,14 +163,18 @@ assert_spatial_operation <- function(spatial_operation) {
 
   if (!any(operation_matches)) {
     function_listing <- paste0(
-      "'sf::st_", names(available_operations), "'",
+      "'sf::st_",
+      names(available_operations),
+      "'",
       collapse = ", "
     )
 
     stop(
       "Assertion on 'spatial_operation' failed: ",
       "Must be a geometric binary predicate listed in '?sf::geos_binary_pred' ",
-      "- i.e. one of ", function_listing, "."
+      "- i.e. one of ",
+      function_listing,
+      "."
     )
   }
 

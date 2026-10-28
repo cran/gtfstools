@@ -4,20 +4,55 @@
 \alias{set_trip_speed}
 \title{Set trip average speed}
 \usage{
-set_trip_speed(gtfs, trip_id, speed, unit = "km/h", by_reference = FALSE)
+set_trip_speed(
+  gtfs,
+  trip_id = NULL,
+  speed,
+  unit = "km/h",
+  first_stop = NULL,
+  last_stop = NULL,
+  from = NULL,
+  to = NULL,
+  route_type = NULL,
+  by_reference = FALSE
+)
 }
 \arguments{
 \item{gtfs}{A GTFS object, as created by \code{\link[=read_gtfs]{read_gtfs()}}.}
 
 \item{trip_id}{A string vector including the \code{trip_id}s to have their
-average speed set.}
+average speed set. If \code{NULL} (the default), \code{route_type} must be given,
+and the speed of every trip of these types is set.}
 
 \item{speed}{A numeric representing the speed to be set. Its length must
 either equal 1, in which case the value is recycled for all
-\code{trip_id}s, or equal \code{trip_id}'s length.}
+\code{trip_id}s, or equal \code{trip_id}'s length. Must be positive and finite. A
+\code{trip_id} listed more than once must be given the same speed. Must be a
+single number when \code{trip_id} is \code{NULL}.}
 
 \item{unit}{A string representing the unit in which the speed is given. One
-of \code{"km/h"} (the default) or \code{"m/s"}.}
+of \code{"km/h"} (the default), \code{"m/s"} or \code{"mph"} (miles per hour).}
+
+\item{first_stop}{A string. The \code{stop_id} where the segment whose speed is
+set starts. If \code{NULL} (the default), the segment starts at each trip's
+first stop.}
+
+\item{last_stop}{A string. The \code{stop_id} where the segment ends. If \code{NULL}
+(the default), the segment ends at each trip's last stop.}
+
+\item{from}{A string, in the "HH:MM:SS" format. Only trips that depart from
+the segment's first stop at or after \code{from} are changed. If \code{NULL} (the
+default), there is no lower limit.}
+
+\item{to}{A string, in the "HH:MM:SS" format. Only trips that depart from
+the segment's first stop at or before \code{to} are changed. If \code{NULL} (the
+default), there is no upper limit.}
+
+\item{route_type}{An integer vector of \code{route_type}s (see
+\code{\link[=filter_by_route_type]{filter_by_route_type()}}). If given, only trips of routes of these types
+are changed; together with the other selection arguments, it restricts
+their selection. \code{route_type}s not listed in \code{routes} are ignored. If
+\code{NULL} (the default), trips of any type are changed.}
 
 \item{by_reference}{Whether to update \code{stop_times}' \code{data.table} by
 reference. Defaults to \code{FALSE}.}
@@ -28,34 +63,54 @@ time columns of its \code{stop_times} adjusted. Else, returns a GTFS object
 invisibly (note that in this case the original GTFS object is altered).
 }
 \description{
-Sets the average speed of each specified \code{trip_id} by changing the
-\code{arrival_time} and \code{departure_time} columns in \code{stop_times}.
+Sets the average speed of each specified \code{trip_id}, or of a segment of it,
+by changing the \code{arrival_time} and \code{departure_time} columns in \code{stop_times}.
 }
 \section{Details}{
 
-The average speed is calculated as the difference between the arrival time
-at the last stop minus the departure time at the first top, over the trip's
-length (as calculated via \code{\link[=get_trip_geometry]{get_trip_geometry()}}, based on the \code{shapes}
-file). The arrival and departure times at all other stops (i.e. not the
-first neither the last) are set as \code{""}, which is written as \code{NA} with
-\code{\link[=write_gtfs]{write_gtfs()}}. Some transport routing software, such as
-\href{http://www.opentripplanner.org/}{OpenTripPlanner}, support specifying stop
-times like so. In such cases, they estimate arrival/departure times at the
-others stops based on the average speed as well. We plan to add that feature
-to this function in the future.
+The duration of each trip's segment, from the departure at \code{first_stop} to
+the arrival at \code{last_stop}, is set to its length divided by \code{speed}.
+Lengths are calculated by \code{\link[=get_trip_length]{get_trip_length()}} along the trip's shape, or as
+straight lines between stops, with a warning, if there are no shapes; the
+\code{stops} table is required. Trips whose length is \code{NA} (e.g. not linked to a
+shape) are left unchanged.
+
+The times at stops strictly inside the segment are set to \code{""} (written as
+\code{NA} by \code{\link[=write_gtfs]{write_gtfs()}}). Times after \code{last_stop} are shifted by the change
+in the segment's duration. Dwell times at \code{first_stop} and \code{last_stop} are
+kept, except at the trip's first and last stops, whose dwell time becomes
+0. \code{first_stop} is matched at its first visit in \code{stop_sequence} order, and
+\code{last_stop} at its next visit after that (which may be the same stop).
+Blank times at \code{last_stop} are filled if it's the trip's last stop.
+
+With \code{first_stop} or \code{last_stop}, trips that don't visit \code{first_stop} and
+then \code{last_stop}, or whose departure at \code{first_stop} is blank, or whose
+times at \code{last_stop} are both blank (unless it's the trip's last stop), are
+left unchanged, with a warning if they were given in \code{trip_id}. Without
+\code{first_stop}, \code{last_stop}, \code{from} and \code{to}, a blank departure at the trip's
+first stop leaves all the times of the trip blank, without a warning.
+
+\code{from} and \code{to} are compared with the \code{departure_time} at \code{first_stop} as
+written in \code{stop_times} (template times, for trips listed in
+\code{frequencies}), so use times past \code{"24:00:00"} for departures after
+midnight; trips whose departure there is blank are then left unchanged.
+Existing \verb{_secs} columns in \code{stop_times} are updated to match.
 }
 
 \examples{
+\dontshow{if (requireNamespace("dplyr", quietly = TRUE)) withAutoprint(\{ # examplesIf}
 \dontshow{
   old_dt_threads <- data.table::setDTthreads(1)
-  on.exit(data.table::setDTthreads(old_dt_threads), add = TRUE)
 }
+library(dplyr)
+
 data_path <- system.file("extdata/spo_gtfs.zip", package = "gtfstools")
 
 gtfs <- read_gtfs(data_path)
 
 gtfs_new_speed <- set_trip_speed(gtfs, trip_id = "CPTM L07-0", 50)
-gtfs_new_speed$stop_times[trip_id == "CPTM L07-0"]
+gtfs_new_speed$stop_times |>
+  filter(trip_id == "CPTM L07-0")
 
 # use the unit argument to change the speed unit
 gtfs_new_speed <- set_trip_speed(
@@ -64,13 +119,53 @@ gtfs_new_speed <- set_trip_speed(
   speed = 15,
   unit = "m/s"
 )
-gtfs_new_speed$stop_times[trip_id == "CPTM L07-0"]
+gtfs_new_speed$stop_times |>
+  filter(trip_id == "CPTM L07-0")
+
+# set the speed only between two stops. later stops are shifted
+gtfs_new_speed <- set_trip_speed(
+  gtfs,
+  trip_id = "CPTM L07-0",
+  speed = 30,
+  first_stop = "18917",
+  last_stop = "18922"
+)
+gtfs_new_speed$stop_times |>
+  filter(trip_id == "CPTM L07-0")
+
+# set the speed only of the trips that depart within a time of day
+poa_path <- system.file("extdata/poa_gtfs.zip", package = "gtfstools")
+poa_gtfs <- read_gtfs(poa_path)
+
+poa_new_speed <- set_trip_speed(
+  poa_gtfs,
+  trip_id = poa_gtfs$trips$trip_id,
+  speed = 25,
+  from = "07:00:00",
+  to = "09:00:00"
+)
+
+# the arrival at the last stop of a trip that departs at 07:02 changes
+poa_gtfs$stop_times |>
+  filter(trip_id == "T2-1@1#702") |>
+  slice_tail(n = 1)
+
+poa_new_speed$stop_times |>
+  filter(trip_id == "T2-1@1#702") |>
+  slice_tail(n = 1)
 
 # original gtfs remains unchanged
-gtfs$stop_times[trip_id == "CPTM L07-0"]
+gtfs$stop_times |>
+  filter(trip_id == "CPTM L07-0")
 
 # when doing by reference, original gtfs is changed
 set_trip_speed(gtfs, trip_id = "CPTM L07-0", 50, by_reference = TRUE)
-gtfs$stop_times[trip_id == "CPTM L07-0"]
 
+gtfs$stop_times |>
+  filter(trip_id == "CPTM L07-0")
+\dontshow{data.table::setDTthreads(old_dt_threads)}
+\dontshow{\}) # examplesIf}
+}
+\seealso{
+\code{\link[=set_route_speed]{set_route_speed()}}, \code{\link[=get_trip_speed]{get_trip_speed()}}, \code{\link[=get_route_speed]{get_route_speed()}}
 }

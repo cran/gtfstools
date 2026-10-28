@@ -3,15 +3,17 @@ title: "Validating GTFS feeds"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Validating GTFS feeds}
-  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEngine{knitr::rmarkdown_notangle}
   %\VignetteEncoding{UTF-8}
 ---
 
 ```{r, include = FALSE}
+not_cran <- identical(tolower(Sys.getenv("NOT_CRAN")), "true")
+
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  eval = identical(tolower(Sys.getenv("NOT_CRAN")), "true"),
+  eval = not_cran,
   out.width = "100%"
 )
 
@@ -30,27 +32,60 @@ dealing with GTFS data.
 In order to answer these puzzling questions, **gtfstools** includes
 `validate_gtfs()`, a function that wraps the [Canonical GTFS
 Validator](https://github.com/MobilityData/gtfs-validator) developed by
-MobilityData. The validator requires Java 11 or higher to run - you can check
+MobilityData. The validator requires Java 11 or higher to run (recent versions
+require Java 17 or higher) - you can check
 the version you have currently installed with the command `java -version` on a
 terminal session or with the command `system("java -version")` from your R
-session. If need be, you can download Java 11 from
+session. If need be, you can download Java from
 https://www.oracle.com/java/technologies/downloads.
 
 Using `validate_gtfs()` is very simple and requires no more than a few function
 calls. First we need to download the validator command-line tool. We can do it
 manually from MobilityData releases, or we can use `download_validator()`. This
-function takes a path to a directory where the validator should be saved to and
-a validator version, which defaults to the latest release, and returns the path
+function takes the directory where the validator should be saved to (by
+default, a temporary directory, which is removed when the R session ends) and a
+validator version, which defaults to the latest release, and returns the path
 to the downloaded validator. Please note that manually downloaded validators
 should be saved with the same filename convention used by the function (i.e.
 `gtfs-validator-vX.Y.Z.jar`). This is important to make sure that our
 validation function can correctly parse the command-line tool version, which
 controls some of its behavior.
 
-```{r}
+```{r, eval = FALSE}
 library(gtfstools)
 
-latest_validator <- download_validator(tempdir())
+latest_validator <- download_validator()
+```
+
+```{r, include = FALSE}
+# the download needs internet access and the validator needs java. if either
+# is unavailable, skip the remaining chunks instead of failing the build
+
+library(gtfstools)
+
+latest_validator <- tryCatch(
+  download_validator(),
+  error = function(cnd) NULL
+)
+java_works <- identical(
+  suppressWarnings(
+    system2("java", "-version", stdout = FALSE, stderr = FALSE)
+  ),
+  0L
+)
+can_validate <- !is.null(latest_validator) && java_works
+
+knitr::opts_chunk$set(eval = can_validate)
+```
+
+```{r, echo = FALSE, results = "asis", eval = not_cran && !can_validate}
+cat(
+  "> **Note:** the validator could not be downloaded or Java could not be",
+  "run when this vignette was built, so the code below was not evaluated.\n"
+)
+```
+
+```{r}
 latest_validator
 ```
 
@@ -76,7 +111,7 @@ As we can see, the validation generates a few output files:
   formatted HTML page (only available when using validator v3.1.0 or higher);
 - `report.json` summarizes the exact same information, but in JSON format,
   which can be used to easily parse and process the results;
-- `system_errors.json` summarizes eventual system erros that may have happened
+- `system_errors.json` summarizes eventual system errors that may have happened
   during the validation and may compromise the results;
 - `validation_stderr.txt` lists the informative messages sent by the
   command-line tool to the standard error output stream, which includes the
@@ -88,15 +123,15 @@ As we can see, the validation generates a few output files:
 `validation_stderr.txt` may slightly vary depending on the version of the
 validator.
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, eval = not_cran}
 knitr::include_graphics("../man/figures/html_validation_report.png")
 ```
 
 Had we run the validator using the same GTFS data in different formats (an URL
 or a GTFS object, for example) the results would be exactly the same:
 
-```{r}
-gtfs_url <- "https://github.com/ipeaGIT/gtfstools/raw/main/inst/extdata/spo_gtfs.zip"
+```{r, error = TRUE}
+gtfs_url <- "https://github.com/ipea/gtfstools/raw/main/inst/extdata/spo_gtfs.zip"
 gtfs <- read_gtfs(data_path)
 
 url_output_dir <- tempfile("validation_from_url")

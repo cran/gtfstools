@@ -4,9 +4,8 @@ trip_id <- "CPTM L07-0"
 
 tester <- function(gtfs = get("gtfs", envir = parent.frame()),
                    trip_id = NULL,
-                   unit = "min",
-                   sort_sequence = FALSE) {
-  get_trip_segment_duration(gtfs, trip_id, unit, sort_sequence)
+                   unit = "min") {
+  get_trip_segment_duration(gtfs, trip_id, unit)
 }
 
 test_that("raises errors due to incorrect input types/value", {
@@ -16,9 +15,6 @@ test_that("raises errors due to incorrect input types/value", {
   expect_error(tester(unit = min))
   expect_error(tester(unit = "mins"))
   expect_error(tester(unit = c("s", "min")))
-  expect_error(tester(sort_sequence = "FALSE"))
-  expect_error(tester(sort_sequence = NA))
-  expect_error(tester(sort_sequence = c(TRUE, TRUE)))
 })
 
 test_that("raises errors if gtfs doesn't have required files/fields", {
@@ -39,10 +35,7 @@ test_that("raises errors if gtfs doesn't have required files/fields", {
   expect_error(tester(no_st_tripid_gtfs), class = "missing_required_field")
   expect_error(tester(no_st_arrtime_gtfs), class = "missing_required_field")
   expect_error(tester(no_st_deptime_gtfs), class = "missing_required_field")
-  expect_error(
-    tester(no_st_stopseq_gtfs, sort_sequence = TRUE),
-    class = "missing_required_field"
-  )
+  expect_error(tester(no_st_stopseq_gtfs), class = "missing_required_field")
 })
 
 test_that("calculates the duration of correct 'trip_id's", {
@@ -97,6 +90,7 @@ test_that("outputs a data.table with adequate columns' classes", {
 
 test_that("outputs duration in the correct unit", {
   seconds_durations <- tester(trip_id = "CPTM L07-0", unit = "s")
+  expect_type(seconds_durations$duration, "integer")
   minutes_durations <- tester(trip_id = "CPTM L07-0", unit = "min")
   hours_durations   <- tester(trip_id = "CPTM L07-0", unit = "h")
   days_durations    <- tester(trip_id = "CPTM L07-0", unit = "d")
@@ -155,33 +149,114 @@ test_that("returns NA duration when arr/dep time are NA", {
   expect_true(all(is.na(durations$duration)))
 })
 
-test_that("doesn't change given gtfs (except for stop_times index)", {
+test_that("doesn't change given gtfs", {
   original_gtfs <- read_gtfs(data_path)
   gtfs <- read_gtfs(data_path)
   expect_identical(original_gtfs, gtfs)
 
+  # selecting trips doesn't add an index to the given stop_times
+
   durations <- tester(trip_id = "CPTM L07-0")
-  expect_false(identical(original_gtfs, gtfs))
-
-  data.table::setindex(gtfs$stop_times, NULL)
   expect_identical(original_gtfs, gtfs)
+  expect_null(data.table::indices(gtfs$stop_times))
 
-  # should also work when sorting shapes/timetables
-  # doesn't change stop_times index because doesn't subset it
-  durations <- tester(sort_sequence = TRUE)
+  # should also work with every trip
+  durations <- tester()
   expect_identical(original_gtfs, gtfs)
 })
 
-test_that("sort_sequence works correctly", {
+test_that("stop_times are sorted by stop_sequence", {
   durations <- tester(trip_id = trip_id)
 
   unordered_gtfs <- gtfs
   unordered_gtfs$stop_times <- gtfs$stop_times[trip_id == "CPTM L07-0"]
   unordered_gtfs$stop_times <- unordered_gtfs$stop_times[c(10:18, 1:9)]
 
-  unordered_durations <- tester(unordered_gtfs, trip_id)
-  expect_false(identical(unordered_durations, durations))
+  expect_identical(tester(unordered_gtfs, trip_id), durations)
+})
 
-  ordered_durations <- tester(unordered_gtfs, trip_id, sort_sequence = TRUE)
-  expect_identical(ordered_durations, durations)
+test_that("sort_sequence is deprecated", {
+  expect_warning(
+    get_trip_segment_duration(gtfs, trip_id, sort_sequence = TRUE),
+    class = "deprecated_sort_sequence"
+  )
+  expect_error(
+    get_trip_segment_duration(gtfs, trip_id, sort_sequence = FALSE),
+    class = "gtfstools_defunct_sort_sequence_error"
+  )
+})
+
+segment_departures <- function(gtfs) {
+  st <- data.table::copy(gtfs$stop_times)
+  data.table::setorderv(st, c("trip_id", "stop_sequence"))
+  segments <- st[
+    ,
+    .(segment = seq_len(.N - 1L), departure_time = departure_time[-.N]),
+    by = trip_id
+  ]
+  return(segments)
+}
+
+test_that("from and to select the segments by their departure", {
+  segments <- segment_departures(gtfs)
+  expected <- segments[
+    segments$departure_time >= "04:00:00" &
+      segments$departure_time <= "04:30:00",
+    .(trip_id, segment)
+  ]
+  expect_true(nrow(expected) > 0 && nrow(expected) < nrow(segments))
+
+  result <- get_trip_segment_duration(
+    gtfs,
+    from = "04:00:00",
+    to = "04:30:00"
+  )
+  expect_identical(result[, .(trip_id, segment)], expected)
+  expect_identical(
+    result,
+    tester()[expected, on = c("trip_id", "segment")]
+  )
+
+  empty <- get_trip_segment_duration(gtfs, from = "99:00:00")
+  expect_identical(nrow(empty), 0L)
+  expect_type(empty$segment, "integer")
+
+  expect_error(
+    get_trip_segment_duration(gtfs, from = "09:00:00", to = "08:00:00"),
+    class = "gtfstools_invalid_time_of_day"
+  )
+})
+
+test_that("from and to don't change the given gtfs", {
+  original_gtfs <- read_gtfs(data_path)
+  given_gtfs <- read_gtfs(data_path)
+
+  result <- get_trip_segment_duration(given_gtfs, from = "04:00:00")
+  expect_identical(original_gtfs, given_gtfs)
+})
+
+test_that("from and to handle stop_times entries without trip_id", {
+  na_gtfs <- read_gtfs(data_path)
+  na_gtfs$stop_times[1:2, trip_id := NA_character_]
+  stop_times_names <- names(na_gtfs$stop_times)
+
+  result <- get_trip_segment_duration(na_gtfs, from = "04:00:00")
+  expected <- get_trip_segment_duration(na_gtfs)[
+    segment_departures(na_gtfs)$departure_time >= "04:00:00"
+  ]
+  expect_identical(result, expected)
+  expect_identical(names(na_gtfs$stop_times), stop_times_names)
+})
+
+test_that("returns a typed empty table when stop_times is empty", {
+  empty_gtfs <- read_gtfs(data_path)
+  empty_gtfs$stop_times <- empty_gtfs$stop_times[0]
+
+  result <- get_trip_segment_duration(empty_gtfs, unit = "s")
+  expect_identical(nrow(result), 0L)
+  expect_type(result$trip_id, "character")
+  expect_type(result$segment, "integer")
+  expect_type(result$duration, "integer")
+
+  expect_type(tester(empty_gtfs)$duration, "double")
 })

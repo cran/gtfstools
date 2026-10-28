@@ -1,18 +1,47 @@
 #include "convert-time.h"
 
-#include <iostream>
+#include <climits>
 
-int convert_time_to_seconds(std::string hms) {
-    const std::string delim = ":";
-    unsigned int ipos = static_cast<unsigned int>(hms.find(delim.c_str()));
-    int h = atoi(hms.substr(0, ipos).c_str());
-    hms = hms.substr(ipos + 1, hms.length() - ipos - 1);
-    ipos = static_cast<unsigned int>(hms.find(delim.c_str()));
-    int m = atoi(hms.substr(0, ipos).c_str());
-    int s = atoi(hms.substr(ipos + 1, hms.length()).c_str());
+namespace {
 
-    return 3600 * h + 60 * m + s;
+inline bool is_space(const char c) {
+    return c == ' ' || c == '\t' || c == '\r' || c == '\n';
 }
+
+// parses "H:MM:SS" in place, without copying the string. surrounding
+// whitespace is skipped; malformed strings return NA_INTEGER
+int convert_time_to_seconds(const char* hms) {
+    const char* p = hms;
+    while (is_space(*p)) p++;
+
+    long long part[3] = {0, 0, 0};
+    int ndig[3] = {0, 0, 0};
+    int field = 0;
+    for (; *p != '\0' && !is_space(*p); p++) {
+        const char c = *p;
+        if (c == ':') {
+            if (++field > 2) return NA_INTEGER;
+        } else if (c >= '0' && c <= '9' && ndig[field] < 9) {
+            part[field] = part[field] * 10 + (c - '0');
+            ndig[field]++;
+        } else {
+            return NA_INTEGER;
+        }
+    }
+    while (is_space(*p)) p++;
+    if (*p != '\0') return NA_INTEGER;
+
+    if (field != 2 || ndig[0] == 0 || ndig[1] != 2 || ndig[2] != 2 ||
+        part[1] >= 60 || part[2] >= 60) {
+        return NA_INTEGER;
+    }
+
+    const long long secs = 3600 * part[0] + 60 * part[1] + part[2];
+    if (secs > INT_MAX) return NA_INTEGER;
+    return static_cast<int>(secs);
+}
+
+} // namespace
 
 //' cpp_time_to_seconds
 //'
@@ -22,19 +51,12 @@ int convert_time_to_seconds(std::string hms) {
 [[cpp11::register]]
 integers cpp_time_to_seconds(const strings times_in) {
     const R_xlen_t n = times_in.size();
-    const size_t ns = static_cast<size_t>(n);
-
-    std::vector<std::string> times(ns);
-    std::copy(times_in.begin(), times_in.end(), times.begin());
-
     writable::integers res(n);
 
-    for (size_t i = 0; i < ns; i++) {
-        if (times[i] == "" || times[i] == "NA") {
-            res[i] = na<int>();
-        } else {
-            res[i] = convert_time_to_seconds(times[i]);
-        }
+    for (R_xlen_t i = 0; i < n; i++) {
+        const SEXP time = STRING_ELT(times_in, i);
+        res[i] = time == NA_STRING ? NA_INTEGER :
+            convert_time_to_seconds(CHAR(time));
     }
 
     return res;

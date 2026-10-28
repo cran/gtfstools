@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>Checking the calendar overlap of GTFS feeds</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Checking the calendar overlap of GTFS
+feeds</h1>
+
+
+
+<p>Routing and accessibility analyses often combine several GTFS feeds,
+such as those of the different transit agencies of a metropolitan
+region. Routing engines such as <code>{r5r}</code> and OpenTripPlanner
+work on a given departure date, which must have service in every feed:
+otherwise, one of the networks silently drops out of the analysis. Feeds
+are published at different times and cover different periods, so such a
+date is not always easy to find.</p>
+<p><code>get_calendar_overlap()</code> compares the calendars of several
+feeds. Besides the feeds, it has only two arguments. Its
+<code>resolution</code> argument controls what the result captures:</p>
+<ul>
+<li><code>resolution = &quot;daily&quot;</code> (the default) captures the
+<strong>intensity</strong> of transit services: the number of trips each
+feed runs on each of its service days, and whether all feeds have
+service on that day.</li>
+<li><code>resolution = &quot;periods&quot;</code> captures whether there is
+<strong>any</strong> service: the periods of consecutive days on which
+every feed runs at least one trip, however few.</li>
+</ul>
+<p>A day may thus belong to an overlap period even if one of the feeds
+runs only a handful of trips on it, which the daily trips reveal. With
+<code>plot = TRUE</code>, either result is plotted with
+<code>{ggplot2}</code>.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(gtfstools)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="co">#&gt; Warning: package &#39;dplyr&#39; was built under R version 4.6.1</span></span></code></pre></div>
+<div id="trips-per-day" class="section level1">
+<h1>Trips per day</h1>
+<p>Feeds can be given as paths to their <code>.zip</code> files. In this
+case, the large <code>shapes</code> and <code>stop_times</code> tables
+are not read. By default, the function returns one row per feed and
+service day:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>spo_path <span class="ot">&lt;-</span> <span class="fu">system.file</span>(<span class="st">&quot;extdata/spo_gtfs.zip&quot;</span>, <span class="at">package =</span> <span class="st">&quot;gtfstools&quot;</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>poa_path <span class="ot">&lt;-</span> <span class="fu">system.file</span>(<span class="st">&quot;extdata/poa_gtfs.zip&quot;</span>, <span class="at">package =</span> <span class="st">&quot;gtfstools&quot;</span>)</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>daily_trips <span class="ot">&lt;-</span> <span class="fu">get_calendar_overlap</span>(<span class="fu">c</span>(spo_path, poa_path))</span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>daily_trips <span class="sc">|&gt;</span> </span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>( overlap <span class="sc">==</span> <span class="cn">TRUE</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>  <span class="fu">head</span>()</span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a><span class="co">#&gt;        feed       date n_trips overlap</span></span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a><span class="co">#&gt;      &lt;char&gt;     &lt;Date&gt;   &lt;int&gt;  &lt;lgcl&gt;</span></span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a><span class="co">#&gt; 1: spo_gtfs 2019-01-18    7948    TRUE</span></span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a><span class="co">#&gt; 2: spo_gtfs 2019-01-19    7945    TRUE</span></span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a><span class="co">#&gt; 3: spo_gtfs 2019-01-20    7945    TRUE</span></span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a><span class="co">#&gt; 4: spo_gtfs 2019-01-21    7948    TRUE</span></span>
+<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a><span class="co">#&gt; 5: spo_gtfs 2019-01-22    7948    TRUE</span></span>
+<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a><span class="co">#&gt; 6: spo_gtfs 2019-01-23    7948    TRUE</span></span></code></pre></div>
+<p><code>n_trips</code> is the number of trips that run on the day, and
+<code>overlap</code> tells whether all feeds have service on it. Trips
+listed in <code>frequencies</code> count once per departure, so feeds
+that describe their service with frequencies are comparable with feeds
+that list every trip.</p>
+<p>A feed has service on a day when at least one of its services runs on
+it, according to the weekdays and dates in <code>calendar</code> and the
+exceptions in <code>calendar_dates</code>. Services not used by any trip
+are ignored. Feeds already read with <code>read_gtfs()</code> (and
+possibly edited afterwards) can also be given as a list, whose names are
+used as feed names,
+e.g. <code>get_calendar_overlap(list(spo = spo_gtfs, poa = poa_gtfs))</code>.</p>
+<p>With <code>plot = TRUE</code>, a box plot shows when each feed’s
+trips run. The box spans the days by which a quarter and three quarters
+of the feed’s trips have run, with a line on the day by which half have,
+and the whiskers reach its first and last service days. The days on
+which all feeds have service are shaded:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">get_calendar_overlap</span>(<span class="fu">c</span>(spo_path, poa_path), <span class="at">plot =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+<p><img role="img" src="data:image/png;base64,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" /><!-- --></p>
+<p>The result is a regular <code>ggplot</code> object, so it can be
+customised with <code>{ggplot2}</code> functions, e.g. to zoom in on a
+period, as in the timeline below.</p>
+<p>The daily trips help pick a departure date on which every feed runs
+its usual level of service, such as a regular weekday away from
+holidays. For example, the trips each feed runs on the first Wednesday
+on which both have service (<code>format(x, &quot;%u&quot;)</code> numbers
+weekdays from 1, Monday, regardless of the locale):</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>overlap_days <span class="ot">&lt;-</span> <span class="fu">unique</span>(daily_trips<span class="sc">$</span>date[daily_trips<span class="sc">$</span>overlap])</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>departure_date <span class="ot">&lt;-</span> overlap_days[<span class="fu">format</span>(overlap_days, <span class="st">&quot;%u&quot;</span>) <span class="sc">==</span> <span class="st">&quot;3&quot;</span>][<span class="dv">1</span>]</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>daily_trips <span class="sc">|&gt;</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>  <span class="fu">filter</span>(date <span class="sc">==</span> departure_date)</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="co">#&gt;        feed       date n_trips overlap</span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="co">#&gt;      &lt;char&gt;     &lt;Date&gt;   &lt;int&gt;  &lt;lgcl&gt;</span></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="co">#&gt; 1: spo_gtfs 2019-01-23    7948    TRUE</span></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a><span class="co">#&gt; 2: poa_gtfs 2019-01-23     194    TRUE</span></span></code></pre></div>
+</div>
+<div id="overlap-periods" class="section level1">
+<h1>Overlap periods</h1>
+<p>When only the dates matter, <code>resolution = &quot;periods&quot;</code>
+summarises the days on which all feeds have service into periods of
+consecutive days, with their first and last days (both included) and
+their length:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">get_calendar_overlap</span>(<span class="fu">c</span>(spo_path, poa_path), <span class="at">resolution =</span> <span class="st">&quot;periods&quot;</span>)</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="co">#&gt;    start_date   end_date n_days</span></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="co">#&gt;        &lt;Date&gt;     &lt;Date&gt;  &lt;int&gt;</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="co">#&gt; 1: 2019-01-18 2019-04-18     91</span></span></code></pre></div>
+<p>The São Paulo and Porto Alegre feeds overlap for 91 days, from
+January 18 to April 18, 2019. When the feeds don’t overlap, a message is
+printed and the result has no rows:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>ber_path <span class="ot">&lt;-</span> <span class="fu">system.file</span>(<span class="st">&quot;extdata/ber_gtfs.zip&quot;</span>, <span class="at">package =</span> <span class="st">&quot;gtfstools&quot;</span>)</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>feeds <span class="ot">&lt;-</span> <span class="fu">c</span>(spo_path, poa_path, ber_path)</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a></span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="fu">get_calendar_overlap</span>(feeds, <span class="at">resolution =</span> <span class="st">&quot;periods&quot;</span>)</span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="co">#&gt; No day has service in all feeds.</span></span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="co">#&gt; Empty data.table (0 rows and 3 cols): start_date,end_date,n_days</span></span></code></pre></div>
+<p>With <code>plot = TRUE</code>, a timeline shows why. Each feed is a
+bar spanning its service days, and the periods in which all feeds have
+service are shaded in the background. The São Paulo feed spans more than
+12 years, so the plot is zoomed in:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="fu">get_calendar_overlap</span>(feeds, <span class="at">resolution =</span> <span class="st">&quot;periods&quot;</span>, <span class="at">plot =</span> <span class="cn">TRUE</span>) <span class="sc">+</span></span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>  <span class="fu">coord_cartesian</span>(<span class="at">xlim =</span> <span class="fu">as.Date</span>(<span class="fu">c</span>(<span class="st">&quot;2018-12-01&quot;</span>, <span class="st">&quot;2021-07-01&quot;</span>)))</span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="co">#&gt; No day has service in all feeds.</span></span></code></pre></div>
+<p><img role="img" src="data:image/png;base64,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" /><!-- --></p>
+<p>The Berlin feed starts in November 2020, after the São Paulo feed
+ends, so no date has service in all three feeds.</p>
+<p>Once a date is chosen, the feeds can be combined into a single one
+with <code>merge_gtfs()</code> (with <code>prefix = TRUE</code> if they
+share ids, such as two versions of the same feed), or reduced to the
+services of that date with the filtering functions (see the <a href="filtering.html">filtering vignette</a>).</p>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

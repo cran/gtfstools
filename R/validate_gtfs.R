@@ -7,7 +7,7 @@
 #' complete set of rules used in the validation
 #' [here](https://github.com/MobilityData/gtfs-validator/blob/master/RULES.md).
 #' Please note that this function requires a working installation of Java 11 or
-#' higher to work.
+#' higher to work. Recent versions of the validator require Java 17 or higher.
 #'
 #' @param gtfs The GTFS to be validated. Can be in the format of a GTFS object,
 #'   of a path to a GTFS file, of a path to a directory or an URL to a feed.
@@ -27,32 +27,36 @@
 #'   `TRUE`.
 #' @param n_threads An integer between 1 and the number of cores in the running
 #'   machine. Control how many threads are used during the validation. Defaults
-#'   to using all but one of the available cores.
+#'   to 1.
 #'
 #' @return Invisibly returns the normalized path to the directory where the
 #'   validation results were saved to.
 #'
 #' @family validation
 #'
-#' @examplesIf identical(tolower(Sys.getenv("NOT_CRAN")), "true")
+#' @examplesIf identical(tolower(Sys.getenv("NOT_CRAN")), "true") && curl::has_internet()
 #' data_path <- system.file("extdata/spo_gtfs.zip", package = "gtfstools")
 #' output_path <- tempfile("validation_result")
 #' validator_path <- download_validator(tempdir())
-#' gtfs <- read_gtfs(data_path)
 #'
-#' validate_gtfs(gtfs, output_path, validator_path)
-#' list.files(output_path)
+#' # download_validator() returns NULL if the validator can't be downloaded
+#' if (!is.null(validator_path)) {
+#'   gtfs <- read_gtfs(data_path)
 #'
-#' # works with feeds saved to disk
-#' new_output_path <- tempfile("new_validation_result")
-#' validate_gtfs(data_path, new_output_path, validator_path)
-#' list.files(new_output_path)
+#'   validate_gtfs(gtfs, output_path, validator_path)
+#'   print(list.files(output_path))
 #'
-#' # and with feeds pointed by an url
-#' newer_output_path <- tempfile("newer_validation_result")
-#' gtfs_url <- "https://github.com/ipeaGIT/gtfstools/raw/main/inst/extdata/spo_gtfs.zip"
-#' validate_gtfs(gtfs_url, newer_output_path, validator_path)
-#' list.files(newer_output_path)
+#'   # works with feeds saved to disk
+#'   new_output_path <- tempfile("new_validation_result")
+#'   validate_gtfs(data_path, new_output_path, validator_path)
+#'   print(list.files(new_output_path))
+#'
+#'   # and with feeds pointed by an url
+#'   newer_output_path <- tempfile("newer_validation_result")
+#'   gtfs_url <- "https://github.com/ipea/gtfstools/raw/main/inst/extdata/spo_gtfs.zip"
+#'   validate_gtfs(gtfs_url, newer_output_path, validator_path)
+#'   print(list.files(newer_output_path))
+#' }
 #'
 #' @export
 validate_gtfs <- function(gtfs,
@@ -195,8 +199,9 @@ assert_and_assign_gtfs_input <- function(gtfs, quiet) {
 
 assert_java_version <- function() {
   informative_message <- paste0(
-    "Please install Java version 11 or higher to run the validator.\n",
-    "You can download Java 11 from https://jdk.java.net/java-se-ri/11."
+    "Please install Java version 11 or higher to run the validator ",
+    "(recent versions of the validator require Java 17 or higher).\n",
+    "You can download Java from https://jdk.java.net/java-se-ri/17."
   )
   java_version_output <- tryCatch(
     processx::run("java", "-version"),

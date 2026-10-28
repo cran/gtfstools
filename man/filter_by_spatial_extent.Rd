@@ -14,16 +14,18 @@ filter_by_spatial_extent(
 \arguments{
 \item{gtfs}{A GTFS object, as created by \code{\link[=read_gtfs]{read_gtfs()}}.}
 
-\item{geom}{An \code{sf} object. Describes the spatial extent used to filter the
-data.}
+\item{geom}{An \code{sf}, \code{sfc} or \code{bbox} object, in WGS 84 (EPSG 4326).
+Describes the spatial extent used to filter the data. A \code{bbox} is treated
+as a rectangle in longitude and latitude (unlike \code{sf::st_as_sfc(bbox)},
+whose edges are geodesics when \code{{s2}} is used).}
 
 \item{spatial_operation}{A spatial operation function from the set of
-options listed in \link[sf:geos_binary_pred]{geos_binary_pred} (check the
-\href{https://en.wikipedia.org/wiki/DE-9IM}{DE-I9M} Wikipedia entry for the
-definition of each function). Defaults to \code{\link[sf:geos_binary_pred]{sf::st_intersects}}, which
+options listed in \link[sf:geos_binary_pred]{geos_binary_pred}. Defaults to \code{\link[sf:st_intersects]{sf::st_intersects}}, which
 tests if the shapes and trips have ANY intersection with the object
 specified in \code{geom}. Please note that \code{geom} is passed as the \code{x} argument
-of these functions.}
+of these functions. \code{\link[sf:st_equals_exact]{sf::st_equals_exact()}} and
+\code{\link[sf:st_is_within_distance]{sf::st_is_within_distance()}} are not supported, since they require
+additional arguments.}
 
 \item{keep}{A logical. Whether the entries related to the shapes and trips
 selected by the given spatial operation should be kept or dropped (defaults
@@ -47,7 +49,7 @@ data_path <- system.file("extdata/spo_gtfs.zip", package = "gtfstools")
 gtfs <- read_gtfs(data_path)
 
 shape_id <- "68962"
-shape_sf <- convert_shapes_to_sf(gtfs, shape_id)
+shape_sf <- get_shapes_geometry(gtfs, shape_id)
 bbox <- sf::st_bbox(shape_sf)
 object.size(gtfs)
 
@@ -69,16 +71,17 @@ object.size(smaller_gtfs)
 
 }
 \seealso{
-Other filtering functions: 
-\code{\link{filter_by_agency_id}()},
-\code{\link{filter_by_route_id}()},
-\code{\link{filter_by_route_type}()},
-\code{\link{filter_by_service_id}()},
-\code{\link{filter_by_sf}()},
-\code{\link{filter_by_shape_id}()},
-\code{\link{filter_by_stop_id}()},
-\code{\link{filter_by_time_of_day}()},
-\code{\link{filter_by_trip_id}()},
-\code{\link{filter_by_weekday}()}
+Other filtering functions:
+\code{\link[=filter_by_agency_id]{filter_by_agency_id()}},
+\code{\link[=filter_by_date]{filter_by_date()}},
+\code{\link[=filter_by_period]{filter_by_period()}},
+\code{\link[=filter_by_route_id]{filter_by_route_id()}},
+\code{\link[=filter_by_route_type]{filter_by_route_type()}},
+\code{\link[=filter_by_service_id]{filter_by_service_id()}},
+\code{\link[=filter_by_shape_id]{filter_by_shape_id()}},
+\code{\link[=filter_by_stop_id]{filter_by_stop_id()}},
+\code{\link[=filter_by_time_of_day]{filter_by_time_of_day()}},
+\code{\link[=filter_by_trip_id]{filter_by_trip_id()}},
+\code{\link[=filter_by_weekday]{filter_by_weekday()}}
 }
 \concept{filtering functions}

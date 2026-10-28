@@ -10,7 +10,7 @@ filter_by_stop_id(
   keep = TRUE,
   include_children = TRUE,
   include_parents = keep,
-  full_trips = TRUE
+  full_trips
 )
 }
 \arguments{
@@ -18,9 +18,11 @@ filter_by_stop_id(
 
 \item{stop_id}{A character vector. The \code{stop_id}s used to filter the data.}
 
-\item{keep}{A logical. Whether the entries related to the \code{trip_id}s that
-passes through the specified \code{stop_id}s should be kept or dropped (defaults
-to \code{TRUE}, which keeps the entries).}
+\item{keep}{A logical. Whether the \code{stop_times} entries at the specified
+\code{stop_id}s (and the entries related to them in other tables) should be
+kept or dropped (defaults to \code{TRUE}, which keeps the entries). Trips that
+still have entries in \code{stop_times} are kept. To keep or drop entire trips,
+pass the \code{trip_id}s that serve these stops to \code{\link[=filter_by_trip_id]{filter_by_trip_id()}}.}
 
 \item{include_children}{A logical. Whether the filtered output should
 keep/drop children stops of those specified in \code{stop_id}. Defaults to
@@ -33,14 +35,11 @@ the same value of \code{keep} - i.e. by default parent stations are kept both
 when their children are kept and dropped, because they can be parents of
 multiple stops that are not necessarily dropped, even if their sibling are.}
 
-\item{full_trips}{A logical. Whether to keep all stops that compose trips
-that pass through the stops specified in \code{stop_id}. Defaults to \code{TRUE}, in
-order to preserve the behavior of the function in versions 1.2.0 and below.
-Please note that when \code{TRUE}, the resultant filtered feed may contain more
-stops than the ones specified in \code{stop_id} to preserve the integrity of the
-trips. IMPORTANT: using \code{full_trips = TRUE} is flagged as deprecated as of
-version 1.3.0 and this parameter will default to \code{FALSE} from version 2.0.0
-onward.}
+\item{full_trips}{Defunct. Deprecated in version 1.3.0 and removed in the
+following major version: using it, with any value, raises an error. The
+function now always filters by the specified stops. To keep all stops of
+the trips that pass through them, subset \code{stop_times} by \code{stop_id} and
+pass the resulting \code{trip_id}s to \code{\link[=filter_by_trip_id]{filter_by_trip_id()}}.}
 }
 \value{
 The GTFS object passed to the \code{gtfs} parameter, after the filtering
@@ -61,34 +60,26 @@ stop_ids <- c("18848", "940004157")
 
 object.size(gtfs)
 
-# keeps entries related to trips that pass through specified stop_ids
-smaller_gtfs <- filter_by_stop_id(gtfs, stop_ids, full_trips = FALSE)
+# keeps the stop_times entries at the specified stop_ids
+smaller_gtfs <- filter_by_stop_id(gtfs, stop_ids)
 object.size(smaller_gtfs)
 
-# drops entries related to trips that pass through specified stop_ids
-smaller_gtfs <- filter_by_stop_id(
-  gtfs,
-  stop_ids,
-  keep = FALSE,
-  full_trips = FALSE
-)
+# drops the stop_times entries at the specified stop_ids
+smaller_gtfs <- filter_by_stop_id(gtfs, stop_ids, keep = FALSE)
 object.size(smaller_gtfs)
-
-# the old behavior of filtering trips that contained the specified stops has
-# been deprecated
-invisible(filter_by_stop_id(gtfs, stop_ids, full_trips = TRUE))
 }
 \seealso{
-Other filtering functions: 
-\code{\link{filter_by_agency_id}()},
-\code{\link{filter_by_route_id}()},
-\code{\link{filter_by_route_type}()},
-\code{\link{filter_by_service_id}()},
-\code{\link{filter_by_sf}()},
-\code{\link{filter_by_shape_id}()},
-\code{\link{filter_by_spatial_extent}()},
-\code{\link{filter_by_time_of_day}()},
-\code{\link{filter_by_trip_id}()},
-\code{\link{filter_by_weekday}()}
+Other filtering functions:
+\code{\link[=filter_by_agency_id]{filter_by_agency_id()}},
+\code{\link[=filter_by_date]{filter_by_date()}},
+\code{\link[=filter_by_period]{filter_by_period()}},
+\code{\link[=filter_by_route_id]{filter_by_route_id()}},
+\code{\link[=filter_by_route_type]{filter_by_route_type()}},
+\code{\link[=filter_by_service_id]{filter_by_service_id()}},
+\code{\link[=filter_by_shape_id]{filter_by_shape_id()}},
+\code{\link[=filter_by_spatial_extent]{filter_by_spatial_extent()}},
+\code{\link[=filter_by_time_of_day]{filter_by_time_of_day()}},
+\code{\link[=filter_by_trip_id]{filter_by_trip_id()}},
+\code{\link[=filter_by_weekday]{filter_by_weekday()}}
 }
 \concept{filtering functions}

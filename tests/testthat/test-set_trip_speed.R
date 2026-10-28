@@ -108,11 +108,24 @@ test_that("calculates speeds correctly", {
   trips_speeds <- get_trip_speed(
     new_speeds_gtfs,
     selected_trip_ids,
-    file = "shapes",
+    method = "shapes",
     unit = "m/s"
   )
 
   expect_identical(round(trips_speeds$speed, 0), rep(50, 3))
+
+  # and in mph
+
+  new_speeds_gtfs <- set_trip_speed(gtfs, selected_trip_ids, 30, unit = "mph")
+
+  trips_speeds <- get_trip_speed(
+    new_speeds_gtfs,
+    selected_trip_ids,
+    method = "shapes",
+    unit = "mph"
+  )
+
+  expect_identical(round(trips_speeds$speed, 0), rep(30, 3))
 
   # it should also work if distinct speeds are given
 
@@ -137,7 +150,7 @@ test_that("calculates speeds correctly", {
   trips_speeds <- get_trip_speed(
     new_speeds_gtfs,
     selected_trip_ids,
-    file = "shapes",
+    method = "shapes",
     unit = "m/s"
   )
 
@@ -203,15 +216,9 @@ test_that("'by_reference' parameter works adequately", {
   gtfs <- read_gtfs(data_path)
   expect_identical(original_gtfs, gtfs)
 
-  # if by_reference = FALSE then the given gtfs should not be changed ('shapes'
-  # and 'trips' indices aside)
+  # if by_reference = FALSE then the given gtfs should not be changed
 
   new_speed_gtfs <- set_trip_speed(gtfs, "CPTM L07-0", 50)
-  expect_false(identical(original_gtfs, gtfs))
-
-  data.table::setindex(gtfs$trips, NULL)
-  data.table::setindex(gtfs$shapes, NULL)
-
   expect_identical(original_gtfs, gtfs)
 
   # if by_reference == TRUE then the given gtfs' 'stop_times' is altered
@@ -254,18 +261,20 @@ test_that("results in identical gtfs if none of the specified trip_ids exist", {
   expect_identical(gtfs, same_speeds_gtfs)
 
   # when receives character(0) remain silent
-  #expect_silent(same_speeds_gtfs <- set_trip_speed(gtfs, character(0), 1)) # AQUI
-  #expect_false(identical(gtfs, same_speeds_gtfs))
-  #data.table::setindex(same_speeds_gtfs$stop_times, NULL)
-  #expect_identical(gtfs, same_speeds_gtfs)
+  expect_silent(same_speeds_gtfs <- set_trip_speed(gtfs, character(0), 1))
+  expect_equal(gtfs, same_speeds_gtfs, ignore_attr = TRUE)
 
-  # also when speed = numeric(0)
-  #expect_silent(
-  #  same_speeds_gtfs <- set_trip_speed(gtfs, character(0), numeric(0)) # AQUI
-  #)
-  #expect_false(identical(gtfs, same_speeds_gtfs))
-  #data.table::setindex(same_speeds_gtfs$stop_times, NULL)
-  #expect_identical(gtfs, same_speeds_gtfs)
+  # also when speed = numeric(0), even if it requires a unit conversion
+  # (issue #84)
+  expect_silent(
+    same_speeds_gtfs <- set_trip_speed(
+      gtfs,
+      character(0),
+      numeric(0),
+      unit = "m/s"
+    )
+  )
+  expect_equal(gtfs, same_speeds_gtfs, ignore_attr = TRUE)
 })
 
 # issue #63
@@ -298,4 +307,456 @@ test_that("sets correct speed independent of id order in trips & stop_times", {
 
   speeds <- get_trip_speed(new_speed)
   expect_true(all(round(speeds$speed) == 20))
+})
+
+test_that("leaves trips without a usable shape unchanged", {
+  shapeless_gtfs <- read_gtfs(data_path)
+  shapeless_gtfs$trips <- data.table::copy(shapeless_gtfs$trips)
+  shapeless_gtfs$trips[trip_id == "CPTM L07-0", shape_id := ""]
+  shapeless_gtfs$trips[trip_id == "CPTM L07-1", shape_id := "nonexistent"]
+
+  trip_ids <- c("CPTM L07-0", "CPTM L07-1", "CPTM L08-0")
+  expect_warning(
+    new_speed_gtfs <- set_trip_speed(shapeless_gtfs, trip_ids, 50),
+    class = "gtfstools_trips_without_shape"
+  )
+
+  unchanged <- c("CPTM L07-0", "CPTM L07-1")
+  expect_identical(
+    new_speed_gtfs$stop_times[trip_id %chin% unchanged],
+    shapeless_gtfs$stop_times[trip_id %chin% unchanged]
+  )
+
+  speed <- get_trip_speed(new_speed_gtfs, "CPTM L08-0")
+  expect_identical(round(speed$speed), 50)
+})
+
+test_that("uses straight-line lengths when there are no shapes", {
+  no_shapes_gtfs <- copy_gtfs_without_file(gtfs, "shapes")
+
+  expect_warning(
+    new_speed_gtfs <- set_trip_speed(no_shapes_gtfs, "CPTM L07-0", 50),
+    class = "gtfstools_shapes_unavailable"
+  )
+  speed <- get_trip_speed(new_speed_gtfs, "CPTM L07-0", method = "euclidean")
+  expect_identical(round(speed$speed), 50)
+})
+
+# issue #89
+test_that("raises errors due to incorrect segment and time of day args", {
+  gtfs <- read_gtfs(data_path)
+
+  expect_error(
+    set_trip_speed(gtfs, "CPTM L07-0", 50, first_stop = ""),
+    "'first_stop'"
+  )
+  expect_error(
+    set_trip_speed(gtfs, "CPTM L07-0", 50, first_stop = c("a", "b")),
+    "'first_stop'"
+  )
+  expect_error(
+    set_trip_speed(gtfs, "CPTM L07-0", 50, last_stop = 18922),
+    "'last_stop'"
+  )
+  expect_error(
+    set_trip_speed(gtfs, "CPTM L07-0", 50, from = "7:00:00"),
+    "'from'"
+  )
+  expect_error(
+    set_trip_speed(gtfs, "CPTM L07-0", 50, to = "07:60:00"),
+    "'to'"
+  )
+  expect_error(
+    set_trip_speed(gtfs, "CPTM L07-0", 50, from = "09:00:00", to = "08:00:00"),
+    class = "gtfstools_invalid_time_of_day"
+  )
+})
+
+test_that("sets the speed of a segment and shifts the following stops", {
+  gtfs <- read_gtfs(data_path)
+
+  new_speed_gtfs <- set_trip_speed(
+    gtfs,
+    "CPTM L07-0",
+    30,
+    first_stop = "18917",
+    last_stop = "18922"
+  )
+
+  old_st <- gtfs$stop_times[trip_id == "CPTM L07-0"]
+  new_st <- new_speed_gtfs$stop_times[trip_id == "CPTM L07-0"]
+
+  # stops 18917 and 18922 have stop_sequence 4 and 8. stops before the segment,
+  # including the departure at its first stop, are unchanged
+
+  expect_identical(new_st[stop_sequence <= 3], old_st[stop_sequence <= 3])
+  expect_identical(new_st[4]$arrival_time, old_st[4]$arrival_time)
+  expect_identical(new_st[4]$departure_time, old_st[4]$departure_time)
+
+  # stops inside the segment are blank
+
+  expect_true(all(new_st[stop_sequence %in% 5:7]$arrival_time == ""))
+  expect_true(all(new_st[stop_sequence %in% 5:7]$departure_time == ""))
+
+  # the segment has the given speed
+
+  segment_length <- get_trip_length(gtfs, "CPTM L07-0", by = "segment")
+  segment_length <- sum(segment_length[segment %in% 4:7]$length)
+  segment_duration <- string_to_seconds(new_st[8]$arrival_time) -
+    string_to_seconds(new_st[4]$departure_time)
+  expect_identical(round(segment_length / segment_duration * 3600), 30)
+
+  # the following stops are shifted by a constant
+
+  shift <- c(
+    string_to_seconds(new_st[stop_sequence >= 8]$arrival_time) -
+      string_to_seconds(old_st[stop_sequence >= 8]$arrival_time),
+    string_to_seconds(new_st[stop_sequence >= 8]$departure_time) -
+      string_to_seconds(old_st[stop_sequence >= 8]$departure_time)
+  )
+  expect_length(unique(shift), 1)
+  expect_false(shift[1] == 0)
+
+  # other trips are unchanged
+
+  expect_identical(
+    new_speed_gtfs$stop_times[trip_id != "CPTM L07-0"],
+    gtfs$stop_times[trip_id != "CPTM L07-0"]
+  )
+})
+
+test_that("keeps dwell times and blank times after the segment", {
+  gtfs <- read_gtfs(data_path)
+
+  edited_gtfs <- gtfs
+  edited_gtfs$stop_times <- data.table::copy(gtfs$stop_times)
+  edited_gtfs$stop_times[
+    trip_id == "CPTM L07-0" & stop_sequence == 4,
+    departure_time := "04:25:00"
+  ]
+  edited_gtfs$stop_times[
+    trip_id == "CPTM L07-0" & stop_sequence == 8,
+    departure_time := "04:57:00"
+  ]
+  edited_gtfs$stop_times[
+    trip_id == "CPTM L07-0" & stop_sequence == 12,
+    `:=`(arrival_time = "", departure_time = "")
+  ]
+
+  new_speed_gtfs <- set_trip_speed(
+    edited_gtfs,
+    "CPTM L07-0",
+    30,
+    first_stop = "18917",
+    last_stop = "18922"
+  )
+  new_st <- new_speed_gtfs$stop_times[trip_id == "CPTM L07-0"]
+
+  expect_identical(new_st[4]$arrival_time, "04:24:00")
+  expect_identical(new_st[4]$departure_time, "04:25:00")
+
+  dwell <- string_to_seconds(new_st[8]$departure_time) -
+    string_to_seconds(new_st[8]$arrival_time)
+  expect_identical(dwell, 60L)
+
+  expect_identical(new_st[12]$arrival_time, "")
+  expect_identical(new_st[12]$departure_time, "")
+})
+
+test_that("leaves trips without the segment unchanged, with a warning", {
+  gtfs <- read_gtfs(data_path)
+
+  expect_warning(
+    new_speed_gtfs <- set_trip_speed(
+      gtfs,
+      c("CPTM L07-0", "CPTM L07-1"),
+      30,
+      first_stop = "18922",
+      last_stop = "18917"
+    ),
+    class = "gtfstools_trips_without_segment"
+  )
+
+  # in CPTM L07-0 18917 comes before 18922. in CPTM L07-1 it's the opposite
+
+  expect_identical(
+    new_speed_gtfs$stop_times[trip_id == "CPTM L07-0"],
+    gtfs$stop_times[trip_id == "CPTM L07-0"]
+  )
+  expect_false(identical(
+    new_speed_gtfs$stop_times[trip_id == "CPTM L07-1"],
+    gtfs$stop_times[trip_id == "CPTM L07-1"]
+  ))
+
+  expect_warning(
+    set_trip_speed(gtfs, "CPTM L07-0", 30, first_stop = "ola"),
+    class = "gtfstools_trips_without_segment"
+  )
+
+  # the last stop can't be a segment's first stop if last_stop is NULL
+
+  expect_warning(
+    set_trip_speed(gtfs, "CPTM L07-0", 30, first_stop = "18975"),
+    class = "gtfstools_trips_without_segment"
+  )
+})
+
+test_that("matches last_stop at its next visit after first_stop", {
+  gtfs <- read_gtfs(data_path)
+
+  loop_gtfs <- gtfs
+  loop_gtfs$stop_times <- data.table::copy(gtfs$stop_times)
+  loop_gtfs$stop_times[
+    trip_id == "CPTM L07-0" & stop_sequence == 10,
+    stop_id := "18917"
+  ]
+
+  new_speed_gtfs <- set_trip_speed(
+    loop_gtfs,
+    "CPTM L07-0",
+    30,
+    first_stop = "18917",
+    last_stop = "18917"
+  )
+  new_st <- new_speed_gtfs$stop_times[trip_id == "CPTM L07-0"]
+
+  expect_true(all(new_st[stop_sequence %in% 5:9]$arrival_time == ""))
+  expect_false(new_st[10]$arrival_time == "")
+  expect_false(new_st[11]$arrival_time == "")
+})
+
+test_that("only changes trips that depart within from and to", {
+  gtfs <- read_gtfs(data_path)
+
+  trip_ids <- unique(gtfs$stop_times$trip_id)
+  first_departure <- gtfs$stop_times[
+    stop_sequence == 1,
+    .(trip_id, departure_time)
+  ]
+
+  changed_trips <- function(new_gtfs) {
+    is_changed <- vapply(
+      trip_ids,
+      function(id) {
+        !identical(
+          gtfs$stop_times[trip_id == id],
+          new_gtfs$stop_times[trip_id == id]
+        )
+      },
+      logical(1)
+    )
+    sort(trip_ids[is_changed])
+  }
+
+  # both bounds are inclusive. some trips depart at exactly 07:00 and 09:00
+
+  new_speed_gtfs <- set_trip_speed(
+    gtfs,
+    trip_ids,
+    30,
+    from = "07:00:00",
+    to = "09:00:00"
+  )
+  expect_identical(
+    changed_trips(new_speed_gtfs),
+    sort(
+      first_departure[
+        departure_time >= "07:00:00" & departure_time <= "09:00:00"
+      ]$trip_id
+    )
+  )
+
+  # from and to can be used alone
+
+  new_speed_gtfs <- set_trip_speed(gtfs, trip_ids, 30, from = "10:00:00")
+  expect_identical(
+    changed_trips(new_speed_gtfs),
+    sort(first_departure[departure_time >= "10:00:00"]$trip_id)
+  )
+
+  new_speed_gtfs <- set_trip_speed(gtfs, trip_ids, 30, to = "00:59:59")
+  expect_identical(
+    changed_trips(new_speed_gtfs),
+    sort(first_departure[departure_time <= "00:59:59"]$trip_id)
+  )
+})
+
+test_that("sets the arrival of single-stop trips to their departure", {
+  gtfs <- read_gtfs(data_path)
+
+  single_stop_gtfs <- gtfs
+  single_stop_gtfs$stop_times <- data.table::copy(gtfs$stop_times)
+  single_stop_gtfs$stop_times <- single_stop_gtfs$stop_times[
+    trip_id != "CPTM L07-0" | stop_sequence == 1
+  ]
+  single_stop_gtfs$stop_times[
+    trip_id == "CPTM L07-0",
+    arrival_time := "03:59:00"
+  ]
+
+  new_speed_gtfs <- set_trip_speed(single_stop_gtfs, "CPTM L07-0", 30)
+  new_st <- new_speed_gtfs$stop_times[trip_id == "CPTM L07-0"]
+
+  expect_identical(new_st$arrival_time, "04:00:00")
+  expect_identical(new_st$departure_time, "04:00:00")
+})
+
+test_that("segment and time of day args work by reference and on other feeds", {
+  gtfs <- read_gtfs(data_path)
+  secs_gtfs <- convert_time_to_seconds(gtfs, "stop_times")
+  secs_st <- data.table::copy(secs_gtfs$stop_times)
+
+  # the given gtfs is unchanged, and *_secs columns are refreshed
+
+  new_speed_gtfs <- set_trip_speed(
+    secs_gtfs,
+    "CPTM L07-0",
+    30,
+    first_stop = "18917",
+    last_stop = "18922"
+  )
+  expect_identical(secs_gtfs$stop_times, secs_st)
+  new_st <- new_speed_gtfs$stop_times
+  expect_identical(
+    new_st$arrival_time_secs,
+    string_to_seconds(new_st$arrival_time)
+  )
+  expect_identical(
+    new_st$departure_time_secs,
+    string_to_seconds(new_st$departure_time)
+  )
+
+  # by reference gives the same times
+
+  set_trip_speed(
+    gtfs,
+    "CPTM L07-0",
+    30,
+    first_stop = "18917",
+    last_stop = "18922",
+    by_reference = TRUE
+  )
+  expect_identical(
+    gtfs$stop_times[, .(arrival_time, departure_time)],
+    new_st[, .(arrival_time, departure_time)]
+  )
+
+  # time of day on a feed without frequencies: only the trips departing in
+  # the window are changed, and trips outside it don't raise warnings
+
+  poa_path <- system.file("extdata/poa_gtfs.zip", package = "gtfstools")
+  poa_gtfs <- read_gtfs(poa_path)
+  trip_ids <- unique(poa_gtfs$stop_times$trip_id)
+  first_departure <- poa_gtfs$stop_times[
+    poa_gtfs$stop_times[, .I[which.min(stop_sequence)], by = trip_id]$V1
+  ]
+  in_window <- first_departure[
+    departure_time >= "07:00:00" & departure_time <= "09:00:00"
+  ]$trip_id
+
+  expect_silent(
+    new_poa <- set_trip_speed(
+      poa_gtfs,
+      trip_ids,
+      25,
+      from = "07:00:00",
+      to = "09:00:00"
+    )
+  )
+  expect_identical(
+    new_poa$stop_times[!trip_id %chin% in_window],
+    poa_gtfs$stop_times[!trip_id %chin% in_window]
+  )
+  expect_false(identical(
+    new_poa$stop_times[trip_id %chin% in_window],
+    poa_gtfs$stop_times[trip_id %chin% in_window]
+  ))
+})
+
+test_that("raises an error with non-positive speeds", {
+  for (speed in list(0, -30, c(50, 0))) {
+    trip_ids <- c("CPTM L07-0", "6450-51-0")[seq_along(speed)]
+    expect_error(
+      set_trip_speed(gtfs, trip_ids, speed),
+      class = "gtfstools_invalid_speed"
+    )
+    expect_error(
+      set_trip_speed(gtfs, trip_ids, speed, unit = "m/s"),
+      class = "gtfstools_invalid_speed"
+    )
+  }
+})
+
+test_that("raises an error with infinite or conflicting speeds", {
+  expect_error(
+    set_trip_speed(gtfs, "CPTM L07-0", Inf),
+    class = "gtfstools_invalid_speed"
+  )
+  expect_error(
+    set_trip_speed(gtfs, c("CPTM L07-0", "CPTM L07-0"), c(30, 60)),
+    class = "gtfstools_conflicting_speeds"
+  )
+  expect_identical(
+    set_trip_speed(gtfs, c("CPTM L07-0", "CPTM L07-0"), c(30, 30)),
+    set_trip_speed(gtfs, "CPTM L07-0", 30)
+  )
+})
+
+test_that("route_type restricts the changed trips", {
+  rail_trips <- gtfs$trips[startsWith(route_id, "CPTM")]$trip_id
+
+  expect_identical(
+    set_trip_speed(gtfs, speed = 50, route_type = 2),
+    set_trip_speed(gtfs, rail_trips, 50)
+  )
+
+  # trips of other types among the given ones are left unchanged, and each
+  # trip keeps its own speed
+  expect_identical(
+    set_trip_speed(
+      gtfs,
+      c("CPTM L07-0", "2105-10-0"),
+      c(50, 60),
+      route_type = 3
+    ),
+    set_trip_speed(gtfs, "2105-10-0", 60)
+  )
+
+  # types not listed in 'routes' are ignored
+  expect_no_warning(result <- set_trip_speed(gtfs, speed = 50, route_type = 4))
+  expect_identical(result$stop_times, gtfs$stop_times)
+})
+
+test_that("warns about trips without the segment only if given in trip_id", {
+  expect_no_warning(
+    set_trip_speed(gtfs, speed = 50, first_stop = "18917", route_type = 2),
+    class = "gtfstools_trips_without_segment"
+  )
+  expect_warning(
+    set_trip_speed(
+      gtfs,
+      c("CPTM L07-0", "CPTM L08-0"),
+      50,
+      first_stop = "18917",
+      route_type = 2
+    ),
+    class = "gtfstools_trips_without_segment"
+  )
+})
+
+test_that("raises errors due to incorrect route_type and selection", {
+  expect_error(
+    set_trip_speed(gtfs, speed = 50),
+    class = "gtfstools_missing_selection_error"
+  )
+  expect_error(set_trip_speed(gtfs, speed = c(50, 60), route_type = 2))
+  expect_error(set_trip_speed(gtfs, "CPTM L07-0", 50, route_type = "3"))
+  expect_error(set_trip_speed(gtfs, speed = 50, route_type = integer(0)))
+
+  no_routes_gtfs <- copy_gtfs_without_file(gtfs, "routes")
+  no_trips_routeid_gtfs <- copy_gtfs_without_field(gtfs, "trips", "route_id")
+  expect_error(set_trip_speed(no_routes_gtfs, speed = 50, route_type = 2))
+  expect_error(
+    set_trip_speed(no_trips_routeid_gtfs, speed = 50, route_type = 2)
+  )
 })

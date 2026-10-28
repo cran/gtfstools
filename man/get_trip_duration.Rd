@@ -4,7 +4,7 @@
 \alias{get_trip_duration}
 \title{Get trip duration}
 \usage{
-get_trip_duration(gtfs, trip_id = NULL, unit = "min")
+get_trip_duration(gtfs, trip_id = NULL, unit = "min", from = NULL, to = NULL)
 }
 \arguments{
 \item{gtfs}{A GTFS object, as created by \code{\link[=read_gtfs]{read_gtfs()}}.}
@@ -16,6 +16,14 @@ duration of every \code{trip_id} in the GTFS.}
 \item{unit}{A string representing the time unit in which the duration is
 desired. One of \code{"s"} (seconds), \code{"min"} (minutes, the default), \code{"h"}
 (hours) or \code{"d"} (days).}
+
+\item{from}{A string, in the "HH:MM:SS" format. Only trips that depart from
+their first stop at or after \code{from} are included. If \code{NULL} (the
+default), there is no lower limit.}
+
+\item{to}{A string, in the "HH:MM:SS" format. Only trips that depart from
+their first stop at or before \code{to} are included. If \code{NULL} (the default),
+there is no upper limit.}
 }
 \value{
 A \code{data.table} containing the duration of each specified trip.
@@ -27,7 +35,20 @@ Returns the duration of each specified \code{trip_id}.
 
 The duration of a trip is defined as the time difference between its last
 arrival time and its first departure time, as specified in the \code{stop_times}
-table.
+table. Trips without any arrival time or without any departure time get a
+\code{NA} duration, with a warning.
+
+Existing \verb{_secs} columns in \code{stop_times} (e.g. created with
+\code{\link[=convert_time_to_seconds]{convert_time_to_seconds()}}) are used as-is, not recalculated from the time
+strings.
+
+\code{from} and \code{to} are compared with the departure time of the first stop of
+each trip, in \code{stop_sequence} order (which must then be an integer column).
+The time is read as the durations are: from \code{departure_time_secs}, if
+present, or else from \code{departure_time}, so use times past \code{"24:00:00"} for
+departures after midnight. For trips listed in \code{frequencies}, these are
+template times, not the times of each departure. Trips whose first
+departure is blank are never included when \code{from} or \code{to} is given.
 }
 
 \examples{

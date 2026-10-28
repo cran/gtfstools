@@ -5,19 +5,24 @@ knitr::opts_chunk$set(
 )
 
 Sys.setenv(OMP_THREAD_LIMIT = 2)
+data.table::setDTthreads(2)
 
 ## ----eval = FALSE-------------------------------------------------------------
 # install.packages("gtfstools")
 
 ## ----eval = FALSE-------------------------------------------------------------
-# install.packages("gtfstools", repos = "https://dhersz.r-universe.dev")
-# 
-# # or
 # # install.packages("remotes")
-# remotes::install_github("ipeaGIT/gtfstools")
+# remotes::install_github("ipea/gtfstools")
 
 ## ----message = FALSE----------------------------------------------------------
 library(gtfstools)
+
+## ----eval = FALSE-------------------------------------------------------------
+# # checks the number of threads currently used
+# data.table::getDTthreads()
+# 
+# # uses 4 threads
+# data.table::setDTthreads(4)
 
 ## -----------------------------------------------------------------------------
 data_path <- system.file("extdata", package = "gtfstools")
@@ -35,14 +40,19 @@ spo_shapes <- read_gtfs(spo_path, files = c("shapes", "trips"))
 names(spo_shapes)
 
 ## -----------------------------------------------------------------------------
-trip_geom <- get_trip_geometry(spo_gtfs, file = "shapes")
+trip_geom <- get_trip_geometry(spo_gtfs)
 plot(trip_geom$geometry)
 single_trip <- spo_gtfs$trips$trip_id[1]
 single_trip
 
-# 'file' argument defaults to c("shapes", "stop_times")
-both_geom <- get_trip_geometry(spo_gtfs, trip_id = single_trip)
-plot(both_geom["origin_file"])
+shape_geom <- get_trip_geometry(spo_gtfs, trip_id = single_trip)
+straight_geom <- get_trip_geometry(
+  spo_gtfs,
+  trip_id = single_trip,
+  method = "euclidean"
+)
+plot(shape_geom$geometry)
+plot(straight_geom$geometry, add = TRUE, col = "red")
 
 ## -----------------------------------------------------------------------------
 trip_durtn <- get_trip_duration(spo_gtfs, unit = "s")
@@ -60,12 +70,22 @@ single_seg_durtn <- get_trip_segment_duration(spo_gtfs, trip_id = single_trip)
 head(single_seg_durtn)
 
 ## -----------------------------------------------------------------------------
+trip_length <- get_trip_length(spo_gtfs)
+head(trip_length)
+
+segment_length <- get_trip_length(spo_gtfs, single_trip, by = "segment")
+head(segment_length)
+
+## -----------------------------------------------------------------------------
 trip_speed <- get_trip_speed(spo_gtfs, unit = "m/s")
 head(trip_speed)
 
 # 'unit' argument defaults to "km/h"
 single_trip_speed <- get_trip_speed(spo_gtfs, trip_id = single_trip)
 single_trip_speed
+
+segment_speed <- get_trip_speed(spo_gtfs, single_trip, by = "segment")
+head(segment_speed)
 
 ## -----------------------------------------------------------------------------
 old_headway_secs <- spo_gtfs$frequencies$headway_secs

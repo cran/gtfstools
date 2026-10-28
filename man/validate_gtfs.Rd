@@ -41,7 +41,7 @@ Defaults to \code{FALSE}.}
 
 \item{n_threads}{An integer between 1 and the number of cores in the running
 machine. Control how many threads are used during the validation. Defaults
-to using all but one of the available cores.}
+to 1.}
 }
 \value{
 Invisibly returns the normalized path to the directory where the
@@ -54,32 +54,37 @@ validator v3.1.0 or higher is used) and in JSON format. Please check the
 complete set of rules used in the validation
 \href{https://github.com/MobilityData/gtfs-validator/blob/master/RULES.md}{here}.
 Please note that this function requires a working installation of Java 11 or
-higher to work.
+higher to work. Recent versions of the validator require Java 17 or higher.
 }
 \examples{
-\dontshow{if (identical(tolower(Sys.getenv("NOT_CRAN")), "true")) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
+\dontshow{if (identical(tolower(Sys.getenv("NOT_CRAN")), "true") && curl::has_internet()) withAutoprint(\{ # examplesIf}
 data_path <- system.file("extdata/spo_gtfs.zip", package = "gtfstools")
 output_path <- tempfile("validation_result")
 validator_path <- download_validator(tempdir())
-gtfs <- read_gtfs(data_path)
 
-validate_gtfs(gtfs, output_path, validator_path)
-list.files(output_path)
+# download_validator() returns NULL if the validator can't be downloaded
+if (!is.null(validator_path)) {
+  gtfs <- read_gtfs(data_path)
 
-# works with feeds saved to disk
-new_output_path <- tempfile("new_validation_result")
-validate_gtfs(data_path, new_output_path, validator_path)
-list.files(new_output_path)
+  validate_gtfs(gtfs, output_path, validator_path)
+  print(list.files(output_path))
 
-# and with feeds pointed by an url
-newer_output_path <- tempfile("newer_validation_result")
-gtfs_url <- "https://github.com/ipeaGIT/gtfstools/raw/main/inst/extdata/spo_gtfs.zip"
-validate_gtfs(gtfs_url, newer_output_path, validator_path)
-list.files(newer_output_path)
+  # works with feeds saved to disk
+  new_output_path <- tempfile("new_validation_result")
+  validate_gtfs(data_path, new_output_path, validator_path)
+  print(list.files(new_output_path))
+
+  # and with feeds pointed by an url
+  newer_output_path <- tempfile("newer_validation_result")
+  gtfs_url <- "https://github.com/ipea/gtfstools/raw/main/inst/extdata/spo_gtfs.zip"
+  validate_gtfs(gtfs_url, newer_output_path, validator_path)
+  print(list.files(newer_output_path))
+}
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-Other validation: 
-\code{\link{download_validator}()}
+Other validation:
+\code{\link[=download_validator]{download_validator()}},
+\code{\link[=list_validator_versions]{list_validator_versions()}}
 }
 \concept{validation}

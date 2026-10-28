@@ -44,10 +44,12 @@ pass to \code{keep}.
 }
 
 \examples{
+\dontshow{if (requireNamespace("dplyr", quietly = TRUE)) withAutoprint(\{ # examplesIf}
 \dontshow{
   old_dt_threads <- data.table::setDTthreads(1)
-  on.exit(data.table::setDTthreads(old_dt_threads), add = TRUE)
 }
+library(dplyr)
+
 # read gtfs
 data_path <- system.file("extdata/spo_gtfs.zip", package = "gtfstools")
 gtfs <- read_gtfs(data_path)
@@ -56,7 +58,8 @@ object.size(gtfs)
 
 # keeps entries related to services than run EITHER on monday OR on sunday
 smaller_gtfs <- filter_by_weekday(gtfs, weekday = c("monday", "sunday"))
-smaller_gtfs$calendar[, c("service_id", "monday", "sunday")]
+smaller_gtfs$calendar |>
+  select(service_id, monday, sunday)
 object.size(smaller_gtfs)
 
 # keeps entries related to services than run on monday AND on sunday
@@ -65,7 +68,8 @@ smaller_gtfs <- filter_by_weekday(
   weekday = c("monday", "sunday"),
   combine = "and"
 )
-smaller_gtfs$calendar[, c("service_id", "monday", "sunday")]
+smaller_gtfs$calendar |>
+  select(service_id, monday, sunday)
 object.size(smaller_gtfs)
 
 # drops entries related to services than run EITHER on monday OR on sunday
@@ -75,7 +79,8 @@ smaller_gtfs <- filter_by_weekday(
   weekday = c("monday", "sunday"),
   keep = FALSE
 )
-smaller_gtfs$calendar[, c("service_id", "monday", "sunday")]
+smaller_gtfs$calendar |>
+  select(service_id, monday, sunday)
 object.size(smaller_gtfs)
 
 # drops entries related to services than run on monday AND on sunday
@@ -87,20 +92,24 @@ smaller_gtfs <- filter_by_weekday(
   combine = "and",
   keep = FALSE
 )
-smaller_gtfs$calendar[, c("service_id", "monday", "sunday")]
+smaller_gtfs$calendar |>
+  select(service_id, monday, sunday)
 object.size(smaller_gtfs)
+\dontshow{data.table::setDTthreads(old_dt_threads)}
+\dontshow{\}) # examplesIf}
 }
 \seealso{
-Other filtering functions: 
-\code{\link{filter_by_agency_id}()},
-\code{\link{filter_by_route_id}()},
-\code{\link{filter_by_route_type}()},
-\code{\link{filter_by_service_id}()},
-\code{\link{filter_by_sf}()},
-\code{\link{filter_by_shape_id}()},
-\code{\link{filter_by_spatial_extent}()},
-\code{\link{filter_by_stop_id}()},
-\code{\link{filter_by_time_of_day}()},
-\code{\link{filter_by_trip_id}()}
+Other filtering functions:
+\code{\link[=filter_by_agency_id]{filter_by_agency_id()}},
+\code{\link[=filter_by_date]{filter_by_date()}},
+\code{\link[=filter_by_period]{filter_by_period()}},
+\code{\link[=filter_by_route_id]{filter_by_route_id()}},
+\code{\link[=filter_by_route_type]{filter_by_route_type()}},
+\code{\link[=filter_by_service_id]{filter_by_service_id()}},
+\code{\link[=filter_by_shape_id]{filter_by_shape_id()}},
+\code{\link[=filter_by_spatial_extent]{filter_by_spatial_extent()}},
+\code{\link[=filter_by_stop_id]{filter_by_stop_id()}},
+\code{\link[=filter_by_time_of_day]{filter_by_time_of_day()}},
+\code{\link[=filter_by_trip_id]{filter_by_trip_id()}}
 }
 \concept{filtering functions}

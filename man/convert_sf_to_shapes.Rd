@@ -15,8 +15,10 @@ converted. If \code{NULL} (the default), all shapes are converted.}
 
 \item{calculate_distance}{A logical. Whether to calculate and populate the
 \code{shape_dist_traveled} column. This column is used to describe the distance
-along the shape from each one of its points to its first point. Defaults to
-\code{TRUE}.}
+along the shape from each one of its points to its first point, in meters.
+Distances are great-circle distances on a sphere with the same radius used
+by \code{{s2}} (6,371,010 meters), regardless of whether \code{sf::sf_use_s2()} is
+enabled. Defaults to \code{TRUE}.}
 }
 \value{
 A \code{data.table} representing a GTFS \code{shapes} table.
@@ -33,7 +35,7 @@ data_path <- system.file("extdata/spo_gtfs.zip", package = "gtfstools")
 gtfs <- read_gtfs(data_path)
 
 # first converting existing shapes table into a sf object
-shapes_sf <- convert_shapes_to_sf(gtfs)
+shapes_sf <- get_shapes_geometry(gtfs)
 head(shapes_sf)
 
 # by default converts all shapes
