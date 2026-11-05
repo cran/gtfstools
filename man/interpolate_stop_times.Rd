@@ -4,7 +4,13 @@
 \alias{interpolate_stop_times}
 \title{Interpolate missing stop times}
 \usage{
-interpolate_stop_times(gtfs, trip_id = NULL, method = "shapes")
+interpolate_stop_times(
+  gtfs,
+  trip_id = NULL,
+  method = "shapes",
+  overwrite = FALSE,
+  keep_dwell_times = TRUE
+)
 }
 \arguments{
 \item{gtfs}{A GTFS object, as created by \code{\link[=read_gtfs]{read_gtfs()}}.}
@@ -19,16 +25,35 @@ interpolates the stop times of every \code{trip_id} in the GTFS.}
 (great-circle) distances between consecutive stops. If the GTFS object
 doesn't have a \code{shapes} table, or if its \code{trips} table doesn't have a
 \code{shape_id} column, \code{"euclidean"} is used instead, with a warning.}
+
+\item{overwrite}{A logical. If \code{FALSE} (the default), only blank times are
+filled. If \code{TRUE}, the times of every stop between the first and the last
+stop of each trip (in \code{stop_sequence} order) are replaced by interpolated
+ones, so only the trips' first and last times are used. Trips whose times
+can't be interpolated keep their original times as they are, with a
+warning, so blanks that \code{overwrite = FALSE} would fill in some of their
+stops may be left blank.}
+
+\item{keep_dwell_times}{A logical. Only used when \code{overwrite = TRUE}. If
+\code{TRUE} (the default), the stops between the first and the last keep their
+original dwell times (the difference between their departure and arrival
+times), and the remaining time is spread over the distance travelled.
+Dwell times that can't be calculated (e.g. a blank time) or that are
+negative (e.g. a stop arriving at \code{"23:59:00"} and departing at
+\code{"00:01:00"}) are taken as 0. If \code{FALSE}, interpolated stops get equal
+arrival and departure times.}
 }
 \value{
-A GTFS object whose \code{stop_times} has its blank times filled in. The
-order of the rows and the other columns are kept. The given GTFS object is
-not modified.
+A GTFS object whose \code{stop_times} has its blank times filled in (or,
+with \code{overwrite = TRUE}, the times of its intermediate stops replaced).
+The order of the rows and the other columns are kept. The given GTFS
+object is not modified.
 }
 \description{
-Fills blank \code{arrival_time}s and \code{departure_time}s in \code{stop_times}, assuming
-that vehicles travel at a constant speed between consecutive stops with
-known times (timepoints).
+Fills blank \code{arrival_time}s and \code{departure_time}s in \code{stop_times}, or
+overwrites those of the intermediate stops of each trip, assuming that
+vehicles travel at a constant speed between consecutive stops with known
+times (timepoints).
 }
 \section{Details}{
 
@@ -37,7 +62,8 @@ departure times are both blank gets a time interpolated linearly on the
 distance travelled from the preceding timepoint, as measured by
 \code{\link[=get_trip_length]{get_trip_length()}} (if the distance between two timepoints is 0, their
 times are spread evenly between the stops in between). Interpolated stops
-get equal arrival and departure times, rounded to the nearest second.
+get equal arrival and departure times, rounded to the nearest second,
+unless they keep their dwell times (see \code{keep_dwell_times}).
 Times past \code{"24:00:00"} are supported. A timepoint with only one of its
 two times blank gets the other time in both columns. If \code{stop_times} has a
 \code{timepoint} column, interpolated stops get \code{timepoint = 0}; the column is
@@ -50,16 +76,19 @@ stop of trips with fewer than two timepoints;
 \item stops between timepoints whose distance can't be calculated, e.g. trips
 not linked to a shape or stops without coordinates;
 \item stops between timepoints in which the arrival is earlier than the
-previous departure, usually times after midnight written as
-\code{"00:30:00"} instead of \code{"24:30:00"}.
+previous departure. Times after midnight written as early morning times
+(e.g. \code{"00:30:00"} instead of \code{"24:30:00"}) are first fixed with
+\code{\link[=fix_overnight_times]{fix_overnight_times()}} in every trip, so the returned GTFS has them
+fixed, and only times that go back by 12 hours or less remain.
 }
 
 Times are blank when they are \code{NA}, empty or whitespace-only strings, or
-\code{"NA"}. Malformed time strings are left unchanged, with a warning, and are
-not used as timepoints. Rows without a \code{trip_id} are left unchanged. For
-trips listed in \code{frequencies}, the template times are interpolated. Times
-are read from the time strings, and existing \verb{_secs} columns (e.g. created
-with \code{\link[=convert_time_to_seconds]{convert_time_to_seconds()}}) are updated to match.
+\code{"NA"}. Malformed time strings are left unchanged (unless overwritten with
+\code{overwrite = TRUE}), with a warning, and are not used as timepoints. Rows
+without a \code{trip_id} are left unchanged. For trips listed in \code{frequencies},
+the template times are interpolated. Times are read from the time strings,
+and existing \verb{_secs} columns (e.g. created with \code{\link[=convert_time_to_seconds]{convert_time_to_seconds()}})
+are updated to match.
 
 Interpolating between timepoints requires the \code{stops} table.
 }
@@ -81,7 +110,7 @@ gtfs$stop_times |>
   head()
 
 # distances measured along the trips' shapes. some trips of this feed have
-# times past midnight written as "00:xx:xx", so they are left blank
+# times past midnight written as "00:xx:xx", which are fixed first
 interpolated_gtfs <- suppressWarnings(interpolate_stop_times(gtfs))
 interpolated_gtfs$stop_times |>
   filter(trip_id == trip) |>

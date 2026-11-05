@@ -314,3 +314,21 @@ test_that("from and to raise the warnings only once", {
     expect_length(warnings, 1)
   }
 })
+
+test_that(
+  desc = "fixes times after midnight written as early morning times",
+  code = {
+    poa_gtfs <- read_gtfs(
+      path = system.file("extdata/poa_gtfs.zip", package = "gtfstools")
+    )
+
+    # this trip runs from 23:10:00 to "00:02:00" (i.e. 52 minutes)
+
+    speed <- get_trip_speed(gtfs = poa_gtfs, trip_id = "T2-1@1#2310")
+    trip_length <- get_trip_length(gtfs = poa_gtfs, trip_id = "T2-1@1#2310")
+    expect_equal(
+      object = speed$speed,
+      expected = trip_length$length / (52 / 60)
+    )
+  }
+)

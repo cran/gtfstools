@@ -2,7 +2,7 @@ Type: Package
 Package: gtfstools
 Title: General Transit Feed Specification (GTFS) Editing and Analysing
         Tools
-Version: 2.0.0
+Version: 2.0.1
 Authors@R: c(
     person("Daniel", "Herszenhut", , "dhersz@gmail.com", role = "aut",
            comment = c(ORCID = "0000-0001-8066-1105")),
@@ -39,8 +39,8 @@ Config/testthat/edition: 3
 Encoding: UTF-8
 NeedsCompilation: yes
 LinkingTo: cpp11
-Config/roxygen2/version: 8.1.0
-Packaged: 2026-10-27 15:51:34 UTC; rafap
+Config/roxygen2/version: 8.1.1
+Packaged: 2026-11-05 19:17:24 UTC; rafap
 Author: Daniel Herszenhut [aut] (ORCID:
     <https://orcid.org/0000-0001-8066-1105>),
   Rafael H. M. Pereira [aut, cre] (ORCID:
@@ -56,4 +56,4 @@ Author: Daniel Herszenhut [aut] (ORCID:
   Ipea - Institute for Applied Economic Research [cph, fnd]
 Maintainer: Rafael H. M. Pereira <rafa.pereira.br@gmail.com>
 Repository: CRAN
-Date/Publication: 2026-10-28 10:30:16 UTC
+Date/Publication: 2026-11-05 20:00:02 UTC

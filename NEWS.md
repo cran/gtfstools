@@ -1,4 +1,26 @@
-# gtfstools v2.0.0
+# gtfstools v2.0.1
+
+## Bug fixes
+
+- gtfstools functions now accept `dt_gtfs` objects whose tables were turned into tibbles, grouped data frames or plain data frames by other packages (e.g. after `dplyr::group_by()`). With `by_reference = TRUE`, an object with any such table now raises an informative error, since the edits can't be made by reference on a converted copy: convert it first with `as_dt_gtfs()` (#130, reported by @baarthur, who also opened PR #132).
+- Several functions that involved estimating trip speed and duration would
+drop trips that cross midnight if GTFS input had times in 00:MM:SS, which
+disrespects the GTFS standard to report times as 24:MM:SS in such cases. 
+This bug has been fixed.  Now all functions that calculate or change durations
+and speeds now fix these times using a new function `fix_overnight_times()`
+and return correct estimates for overnight trips.
+- `filter_by_weekday()` now warns when the GTFS object has no `calendar` table, instead of silently returning it unchanged. Its documentation now states that services defined only in `calendar_dates` are never related to a weekday (use `filter_by_date()` to consider them).
+- `validate_gtfs()` now raises an error when `n_threads` is not a whole number, as documented, instead of passing it to the validator.
+
+## New features
+
+- New function `fix_overnight_times()` rewrites the times of trips that run past midnight but are written as early morning times (e.g. `"00:30:00"` instead of `"24:30:00"`), as required by the GTFS specification. `fix_gtfs()` now runs it before capping speeds and filling blank stop times, so these trips are no longer left with blank times.
+- `interpolate_stop_times()` gains `overwrite` and `keep_dwell_times`. With `overwrite = TRUE`, the times of every stop between the first and the last stop of each trip are replaced by interpolated ones, instead of only the blank ones. By default (`keep_dwell_times = TRUE`), these stops keep their original dwell times.
+- `fix_gtfs()` gains `overwrite_stop_times`. With `overwrite_stop_times = TRUE`, the times of every stop between the first and the last stop of each trip are replaced by interpolated ones, keeping their dwell times, instead of only filling blank times (see `interpolate_stop_times()`).
+- `set_dwell_time()` gains `strategy`. The default, `"shift_trip_end"`, shifts the later times of the trips, as before. `"keep_total_duration"` splits the change around each intermediate stop, keeping the trip durations.
+
+
+# gtfstools 2.0.0
 
 ## Breaking changes
 
@@ -7,7 +29,6 @@
 - `get_trip_length()` now measures each trip from its first to its last stop, instead of along its entire shape, so lengths are usually shorter, and the speeds of `get_trip_speed()` and `set_trip_speed()` slightly lower. Likewise, `get_trip_geometry()` now returns, by default, the part of the shape between the first and last stops. These functions now require the `stops` table (and `get_trip_length()` and `get_trip_geometry()` also `stop_times`). Use the new `get_shape_length()` and `get_shapes_geometry()` for entire shapes.
 - `get_trip_geometry()`, `get_trip_length()` and `get_trip_speed()` now return one result per trip, without the `origin_file` column. Their new `method` argument (and `by`, in the last two) comes right after `trip_id`, so `unit` and `file` must be passed by name. `get_trip_speed()` also returns `route_id` as its first column, and so requires the `trips` table.
 - The `by_reference` argument of `set_trip_speed()` must now be passed by name (#89).
-- `convert_shapes_to_sf()`, `get_trip_geometry()`, `get_trip_length()`, `get_trip_speed()`, `get_trip_segment_duration()` and `get_stop_times_patterns()` now always order `shapes` and `stop_times` by `shape_pt_sequence`/`stop_sequence`, which are therefore required. Results only change for feeds not ordered by these columns, which were previously wrong. Their `sort_sequence` argument is deprecated: `TRUE` raises a warning and `FALSE` an error (#94).
 
 ## Feature deprecation
 
@@ -31,7 +52,7 @@
 - New functions to edit feeds:
   - `set_route_frequency()` sets the headway of routes within a time of day, replacing their trips in it with a frequency-based template trip. Departures outside the time of day don't change.
   - `set_route_speed()` sets the average speed of all trips of the given routes, as `set_trip_speed()` does for trips.
-  - `set_dwell_time()`, `set_min_dwell_time()` and `set_max_speed()` set dwell times, raise dwell times at intermediate stops to a minimum and cap trip speeds, shifting the later times of each trip accordingly. The dwell times can be set within a time of day, and speeds capped only between two stops or for trips departing within a time of day, as in `set_trip_speed()`. Like `set_trip_speed()` and `set_route_speed()`, they and `set_route_frequency()` can be restricted to some transport modes with `route_type`.
+  - `set_dwell_time()`, `set_min_dwell_time()`, `set_max_speed()` and `set_min_speed()` set dwell times, raise dwell times at intermediate stops to a minimum, and cap or raise trip speeds to a maximum or minimum, shifting the later times of each trip accordingly. The dwell times can be set within a time of day, and speeds changed only between two stops or for trips departing within a time of day, as in `set_trip_speed()`. Like `set_trip_speed()` and `set_route_speed()`, they and `set_route_frequency()` can be restricted to some transport modes with `route_type`.
   - `interpolate_stop_times()` fills blank arrival and departure times, assuming a constant speed between stops with known times.
   - `interpolate_shape_dist_traveled()` (re)calculates `shape_dist_traveled` in `stop_times` and `shapes`, in meters.
   - `stop_times_to_frequencies()`, the counterpart of `frequencies_to_stop_times()`, approximates scheduled trips by frequency-based ones (#69).
@@ -89,6 +110,7 @@
 - `read_gtfs()` no longer keeps doubled quotes inside quoted text fields, and `write_gtfs()` always writes UTF-8, also for feeds read with `encoding = "Latin-1"`.
 - `as_dt_gtfs()` no longer turns `Date` fields into `NA`, and converts the date fields of lists to `Date`.
 - The documentation of `filter_by_stop_id()` now says that it keeps (or drops) the `stop_times` entries at the given stops, not entire trips.
+- `convert_shapes_to_sf()`, `get_trip_geometry()`, `get_trip_length()`, `get_trip_speed()`, `get_trip_segment_duration()` and `get_stop_times_patterns()` now always order `shapes` and `stop_times` by `shape_pt_sequence`/`stop_sequence`, which are therefore required. Results only change for feeds not ordered by these columns, which were previously wrong. Their `sort_sequence` argument is deprecated: `TRUE` raises a warning and `FALSE` an error (#94).
 
 ## Notes
 

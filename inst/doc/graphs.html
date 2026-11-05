@@ -404,10 +404,6 @@ inconsistencies. We also want to ensure that no trips exceed 25 km/h and
 that all trips have a minimum dwell time of 30 seconds to allow
 passengers to board and alight.</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>gtfs <span class="ot">&lt;-</span> <span class="fu">fix_gtfs</span>(gtfs, <span class="at">max_speed =</span> <span class="dv">25</span>, <span class="at">min_dwell_time =</span> <span class="dv">30</span>)</span></code></pre></div>
-<p>obs. in this case, <code>fix_gtfs()</code> throws two warnings that
-refer to a few late night trips whose times go back to “00:00:00” after
-midnight. These trips depart outside the time of day used below, so they
-don’t affect the network.</p>
 </div>
 <div id="building-a-gmns-network" class="section level1">
 <h1>Building a GMNS network</h1>

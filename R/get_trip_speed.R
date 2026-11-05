@@ -32,9 +32,11 @@
 #' duration calculated by [get_trip_duration()] (with `by = "trip"`) or by
 #' [get_trip_segment_duration()] (with `by = "segment"`). Speeds are `NA` when
 #' the length is `NA` (e.g. trips not linked to a shape) or when the duration
-#' is missing (e.g. blank times at intermediate stops) or not positive. With
-#' `by = "trip"`, trips without any arrival or departure time raise the warning
-#' of [get_trip_duration()].
+#' is missing or not positive. With `by = "segment"`, the duration is missing
+#' when the segment's departure or arrival time is blank. With `by = "trip"`,
+#' blank times at intermediate stops don't affect the duration, which is
+#' missing only for trips without any arrival or departure time; these trips
+#' raise the warning of [get_trip_duration()].
 #'
 #' The `route_id` of each trip comes from the `trips` table, which is required
 #' (also with `method = "euclidean"`). Trips not listed in `trips` have an `NA`
@@ -45,7 +47,11 @@
 #' strings.
 #'
 #' `from` and `to` select the trips (or segments) as in [get_trip_length()],
-#' from the `departure_time` strings, even if `_secs` columns exist.
+#' from the `departure_time` strings, even if `_secs` columns exist. Times
+#' after midnight written as early morning times (e.g. `"00:30:00"` instead of
+#' `"24:30:00"`) are first fixed with [fix_overnight_times()], if
+#' `stop_sequence` is an integer column, so lengths, durations and the time of
+#' day all use the fixed times.
 #'
 #' @seealso [get_route_speed()], [set_trip_speed()], [set_route_speed()],
 #'   [get_trip_length()], [get_trip_duration()], [get_trip_segment_duration()]
@@ -137,6 +143,14 @@ get_trip_speed <- function(
   if (!is.null(file)) {
     method <- map_deprecated_file(file, "get_trip_speed")
   }
+
+  # times after midnight written as early morning times are fixed first, so
+  # get_trip_length() selects the segments within the time of day from the
+  # same times as the durations, and the duration functions don't fix them
+  # again. without an integer stop_sequence the times can't be ordered, so
+  # they are used as written
+
+  gtfs <- fix_overnight_in_call(gtfs = gtfs, trip_id = trip_id)
 
   # get_trip_length() keeps only the trips or segments within the time of
   # day, so the durations joined to them below are filtered too
